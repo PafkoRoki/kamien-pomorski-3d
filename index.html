@@ -667,15 +667,6 @@ function inSite(x, y) {
   }
   return ins;
 }
-function distToSite(x, y) {
-  let d = Infinity;
-  for (let i = 0; i < N_RING - 1; i++) {
-    const [ax, ay] = SITE_RING[i], [bx, by] = SITE_RING[i + 1], dx = bx - ax, dy = by - ay;
-    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)));
-    d = Math.min(d, Math.hypot(x - ax - t * dx, y - ay - t * dy));
-  }
-  return d;
-}
 function addToLayer(id, obj) { layerNodes.get(id).push(obj); obj.visible = LAYERS.find(l => l.id === id).on; }
 const _ray = new THREE.Raycaster(), _down = new THREE.Vector3(0, -1, 0), _o = new THREE.Vector3();
 function hitAt(x, y, targets) { _ray.set(_o.set(x, 400, -y), _down); return _ray.intersectObjects(targets, false)[0]; }
@@ -816,9 +807,7 @@ let TREES = [];
 const treeGrid = new Map();
 function buildTrees(data) {
   const keep = data.filter(t => !inSite(t[0], t[1]));
-  // skala: 50% wielkości z nDSM; wysokie topole w pasie 40 m od granicy terenu inwestycji - 25%
-  const k = t => distToSite(t[0], t[1]) < 40 ? 0.25 : 0.5;
-  TREES = keep.map(t => ({ x: t[0], y: t[1], r: Math.max(t[4] * k(t), 0.6) }));
+  TREES = keep.map(t => ({ x: t[0], y: t[1], r: Math.max(t[4] * 0.5, 0.6) }));
   for (const t of TREES) { const k = Math.floor(t.x / 10) + ',' + Math.floor(t.y / 10); (treeGrid.get(k) || treeGrid.set(k, []).get(k)).push(t); }
   const crownM = new THREE.MeshStandardMaterial({ roughness: .95 }); crownM.color.setRGB(.42, .56, .36); crownM.name = 'MAT_TREE_CROWN';
   const trunkM = new THREE.MeshStandardMaterial({ roughness: .95 }); trunkM.color.setRGB(.40, .34, .28); trunkM.name = 'MAT_TREE_TRUNK';
@@ -832,7 +821,7 @@ function buildTrees(data) {
   const R = rng(7);
   let ti = 0, ci = 0, ki = 0;
   for (const t of keep) {
-    const [x, y, z] = t, f = k(t), h = Math.max(t[3] * f, 2), r = Math.max(t[4] * f, 0.6);
+    const [x, y, z] = t, h = Math.max(t[3] * 0.5, 2), r = Math.max(t[4] * 0.5, 0.6);
     if (t[5]) {
       m.compose(p.set(x, z + h * 0.15, -y), q.identity(), s.set(r, h * 0.85, r)); cones.setMatrixAt(ki++, m);
       m.compose(p.set(x, z, -y), q.identity(), s.set(r * 0.12, h * 0.2, r * 0.12)); trunks.setMatrixAt(ti++, m);
