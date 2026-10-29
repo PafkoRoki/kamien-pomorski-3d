@@ -712,7 +712,7 @@ function toonOf(src, ctx, outline) {
   const m = new THREE.MeshToonMaterial({ color: c, gradientMap: toonGrad, side: src.side, transparent: src.transparent, opacity: src.opacity });
   Object.assign(m, { polygonOffset: src.polygonOffset, polygonOffsetFactor: src.polygonOffsetFactor, polygonOffsetUnits: src.polygonOffsetUnits });
   m.name = src.name;
-  m.userData.outlineParameters = { thickness: 0.0065, color: [0.05, 0.05, 0.07], alpha: 1, visible: outline };
+  m.userData.outlineParameters = { thickness: 0.0038, color: [0.05, 0.05, 0.07], alpha: 1, visible: outline };
   toonCache.set(key, m); return m;
 }
 /* Wycięcie otoczenia w granicy terenu inwestycji: istniejące chodniki, trawniki i teren z OSM/NMT
@@ -1664,7 +1664,7 @@ $('shot-prompt').addEventListener('click', async () => {
 
 /* ---------- Pętla ---------- */
 // kontury w stylu anime: OutlineEffect (odwrócona powłoka), tylko gdy aktywna paleta toon
-const outlineFx = new OutlineEffect(renderer, { defaultThickness: 0.0065, defaultColor: [0.05, 0.05, 0.07], defaultAlpha: 1, defaultKeepAlive: true });
+const outlineFx = new OutlineEffect(renderer, { defaultThickness: 0.0038, defaultColor: [0.05, 0.05, 0.07], defaultAlpha: 1, defaultKeepAlive: true });
 function draw() { if (PALETTES[palKey]?.toon) outlineFx.render(scene, camera); else renderer.render(scene, camera); }
 const needle = document.getElementById('needle');
 function resize() {
