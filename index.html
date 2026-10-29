@@ -480,9 +480,6 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { TessellateModifier } from 'three/addons/modifiers/TessellateModifier.js';
-import { Line2 } from 'three/addons/lines/Line2.js';
-import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
-import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { computeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 // szybkie raycasty (BVH) – rozmieszczanie krów, łodzi i łącznic po terenie
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -704,7 +701,7 @@ const LAND = {
   TERRACE: '#c79a66', PATH_PAVERS: '#e6d9bc', PLAYGROUND: '#e5703a', PLAY_SAND: '#f2d27f',
   PLAY_MOUND_GRASS: '#58a043', LAWN: '#67b04a', GROUND: '#98c068', EXISTING_MEADOW: '#b9c98f',
   TREE_CROWN_SITE: '#2f9a58', TREE_CROWN: '#4f8f45', TREE_TRUNK: '#6b5340',
-  SITE_BOUNDARY: '#e23b26', DESIGN_GRID: '#2f6fd6', PODIUM: '#b7b0a4', DOOR: '#23262a', GLASS: '#3c4b57', HEDGE: '#3d7d3f',
+  SITE_BOUNDARY: '#e23b26', DESIGN_GRID: '#2f6fd6', PODIUM: '#b7b0a4', DOOR: '#23262a', GLASS: '#2f4352', HEDGE: '#3d7d3f', BALCONY: '#ecebe6', RAIL_GLASS: '#b9d7e8', DECK: '#a7784c', KIOSK: '#dedbd4',
 };
 const PALETTES = {
   akcent: {
@@ -732,7 +729,7 @@ const PALETTES = {
       ASPHALT: '#d6d3cd', PARKING_PAVERS: '#e2dfd9', MARKING_WHITE: '#ffffff', CURB: '#faf9f6', TERRACE: '#e8ddcc',
       PATH_PAVERS: '#f6f2ea', PLAYGROUND: '#e8d6c2', PLAY_SAND: '#efe4cc', PLAY_MOUND_GRASS: '#dfe6d4', LAWN: '#e4ead9',
       GROUND: '#eef0e8', EXISTING_MEADOW: '#efefe9', TREE_CROWN_SITE: '#bcd3b2', TREE_CROWN: '#cad8c2', TREE_TRUNK: '#c8b8a4',
-      SITE_BOUNDARY: '#c0392b', DESIGN_GRID: '#7f9cc4', PODIUM: '#c49a6d', DOOR: '#7a5a3c', GLASS: '#a67d55', HEDGE: '#cbd8bf' },
+      SITE_BOUNDARY: '#c0392b', DESIGN_GRID: '#7f9cc4', PODIUM: '#c49a6d', DOOR: '#7a5a3c', GLASS: '#a67d55', HEDGE: '#cbd8bf', BALCONY: '#e3c29d', RAIL_GLASS: '#f2ece2', DECK: '#c79d70', KIOSK: '#dcb68c' },
     edge: '#7a5a3c', edgeOp: .55, sel: 0x1d5c8f,
     legend: [['Budynki projektowane', '#dcb68c'], ['Zagospodarowanie', '#f6f2ea'], ['Otoczenie', '#f3f1ed']],
   },
@@ -743,7 +740,7 @@ const PALETTES = {
     concept: { ...LAND, FACADE: '#efebe4', SLAB_BANDS: '#d2cbbf', PLINTH: '#8c857b', ROOF: '#6b6f74', PARAPET: '#dcd6cc', PODIUM: '#a49d92',
       ASPHALT: '#55585c', PARKING_PAVERS: '#9a9a96', MARKING_WHITE: '#f2f2ee', CURB: '#d6d4cf', TERRACE: '#a9825c', PATH_PAVERS: '#d8d0bf',
       PLAYGROUND: '#c9714a', PLAY_SAND: '#e3cf98', PLAY_MOUND_GRASS: '#6f9f4f', LAWN: '#6f9f4f', GROUND: '#7fa45a', EXISTING_MEADOW: '#93a865',
-      TREE_CROWN_SITE: '#4f7f3e', TREE_CROWN: '#567f43', TREE_TRUNK: '#5e4a3a', DOOR: '#2b2d30', GLASS: '#4b5f6e', HEDGE: '#3f7a3a' },
+      TREE_CROWN_SITE: '#4f7f3e', TREE_CROWN: '#567f43', TREE_TRUNK: '#5e4a3a', DOOR: '#2b2d30', GLASS: '#3e5463', HEDGE: '#3f7a3a', BALCONY: '#e6e4de', RAIL_GLASS: '#c3dbe7', DECK: '#9c7148', KIOSK: '#d8d4cc' },
     edge: '#000000', edgeOp: 0, sel: 0x1d5c8f,
     legend: [['Naturalne kolory koncepcji i otoczenia, bez konturów – dobry podkład do wizualizacji AI', '#6f9f4f']],
   },
@@ -877,6 +874,7 @@ function select(name, fly) {
     ['Wysokość od terenu', fmt(b.top - b.base, 2) + ' m'],
   ];
   if (b.pod) rows.push(['Postument nad terenem', fmt(b.pod, 2) + ' m'], ['Garaż podziemny (obrys)', fmt(b.garA) + ' m²']);
+  if (b.deckA) rows.push(['Taras na dachu (użytkowy)', fmt(b.deckA) + ' m²'], ['Kiosk wyjścia na dach', '4,8 × 3,6 m']);
   document.getElementById('card-dl').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
   document.getElementById('card-note').textContent = `${fmt(b.gfa / 11170.2 * 100)}% powierzchni całkowitej koncepcji`;
   card.hidden = false;
@@ -906,7 +904,7 @@ function updateLabels() {
   const w = view.clientWidth, h = view.clientHeight;
   for (const b of BUILDINGS) {
     const el = labels.get(b.n);
-    vtmp.copy(P(b.c[0], b.c[1], b.top + 2.5)).project(camera);
+    vtmp.copy(P(b.c[0], b.c[1], b.top + 5)).project(camera);
     const vis = on && vtmp.z < 1 && Math.abs(vtmp.x) < 1.05 && Math.abs(vtmp.y) < 1.05;
     el.hidden = !vis;
     if (vis) el.style.transform = `translate(${(vtmp.x + 1) / 2 * w}px, ${(1 - vtmp.y) / 2 * h}px) translate(-50%, -100%)`;
@@ -1003,6 +1001,8 @@ function addConceptMesh(geo, key, fallback, o = {}) {
   // łącznice: przesunięcie głębi, żeby nierówny teren otoczenia nie przebijał przez asfalt
   if (o.offset) { mat.polygonOffset = true; mat.polygonOffsetFactor = -2; mat.polygonOffsetUnits = -4; }
   if (o.side) mat.side = THREE.DoubleSide;
+  if (key === 'GLASS' && !o.own) { mat.metalness = 0.35; mat.roughness = 0.12; }
+  if (o.glass) { mat.transparent = true; mat.opacity = 0.32; mat.depthWrite = false; mat.metalness = 0.2; mat.roughness = 0.05; }
   const m = new THREE.Mesh(geo, mat);
   m.castShadow = !!o.cast; m.receiveShadow = true;
   Object.assign(m.userData, { kind: o.kind || 'land', concept: true, extra: true });
@@ -1117,17 +1117,19 @@ function fixRoofC(concept) {
    moduł ok. 3,0 m wzdłuż każdego ciągu elewacji (łuk budynku C traktowany jako jeden ciąg) */
 const RINGS = {"B":[[-39.51,16.35],[-38.42,16.97],[-40.28,20.23],[-39.19,20.84],[-42.9,27.36],[-45.07,26.12],[-45.69,27.21],[-47.86,25.97],[-49.72,29.23],[-58.41,24.29],[-54.7,17.77],[-55.79,17.15],[-52.7,11.72],[-51.61,12.34],[-49.75,9.08],[-38.89,15.26]],"A4":[[35.18,-8.74],[36.27,-8.12],[34.41,-4.87],[35.5,-4.25],[31.79,2.27],[29.61,1.03],[29.0,2.12],[26.82,0.88],[24.97,4.14],[16.28,-0.8],[19.99,-7.32],[18.9,-7.94],[21.99,-13.37],[23.08,-12.75],[24.93,-16.01],[35.8,-9.83]],"A3":[[53.73,-41.33],[54.82,-40.72],[52.96,-37.46],[54.05,-36.84],[50.34,-30.32],[48.16,-31.56],[47.55,-30.47],[45.37,-31.71],[43.52,-28.45],[34.83,-33.39],[38.54,-39.91],[37.45,-40.53],[40.54,-45.96],[41.63,-45.34],[43.48,-48.6],[54.35,-42.42]],"A2":[[72.28,-73.92],[73.36,-73.31],[71.51,-70.05],[72.6,-69.43],[68.89,-62.91],[66.71,-64.15],[66.09,-63.06],[63.92,-64.3],[62.07,-61.04],[53.38,-65.98],[57.09,-72.5],[56.0,-73.12],[59.09,-78.55],[60.18,-77.94],[62.03,-81.19],[72.9,-75.01]],"A1":[[90.83,-106.52],[91.91,-105.9],[90.06,-102.64],[91.15,-102.02],[87.44,-95.5],[85.26,-96.74],[84.64,-95.65],[82.47,-96.89],[80.62,-93.63],[71.93,-98.58],[75.64,-105.09],[74.55,-105.71],[77.64,-111.14],[78.73,-110.53],[80.58,-113.78],[91.45,-107.6]],"D_N":[[-68.69,54.56],[-66.21,54.31],[-64.35,72.97],[-70.57,73.58],[-70.7,72.34],[-75.67,72.83],[-75.8,71.59],[-79.53,71.96],[-79.9,68.23],[-78.65,68.11],[-79.15,63.13],[-81.64,63.38],[-82.01,59.65],[-80.76,59.52],[-81.13,55.79],[-79.89,55.67],[-80.01,54.42],[-68.82,53.31]],"D_S":[[-73.78,41.24],[-70.05,40.87],[-69.93,42.12],[-67.44,41.87],[-66.33,53.06],[-81.26,54.55],[-81.87,48.33],[-80.63,48.2],[-81.25,41.98],[-78.76,41.74],[-78.64,42.98],[-73.66,42.49]],"C":[[-26.96,73.28],[-26.82,73.26],[-25.93,73.16],[-25.66,73.12],[-24.78,72.98],[-24.51,72.93],[-23.64,72.75],[-23.37,72.69],[-22.5,72.48],[-22.23,72.41],[-21.37,72.17],[-21.11,72.09],[-20.26,71.81],[-20.0,71.72],[-19.17,71.4],[-18.91,71.3],[-18.09,70.96],[-17.84,70.85],[-17.03,70.47],[-16.78,70.35],[-15.99,69.94],[-15.75,69.81],[-14.97,69.36],[-14.73,69.22],[-13.97,68.75],[-13.74,68.6],[-13.0,68.1],[-12.78,67.94],[-12.06,67.41],[-11.84,67.25],[-11.15,66.69],[-10.94,66.51],[-10.26,65.92],[-10.06,65.74],[-9.41,65.13],[-9.21,64.94],[-8.59,64.3],[-8.4,64.1],[-7.8,63.44],[-7.62,63.23],[-7.04,62.54],[-6.87,62.33],[-6.33,61.62],[-6.16,61.4],[-5.65,60.67],[-5.49,60.45],[-5.0,59.7],[-4.86,59.46],[-4.4,58.69],[-4.33,58.58],[7.22,38.27],[-4.73,31.47],[-16.25,51.72],[-16.6,52.31],[-16.94,52.83],[-17.3,53.34],[-17.68,53.83],[-18.08,54.3],[-18.5,54.76],[-18.93,55.21],[-19.38,55.63],[-19.85,56.04],[-20.34,56.43],[-20.84,56.8],[-21.35,57.15],[-21.88,57.48],[-22.42,57.78],[-22.97,58.07],[-23.53,58.33],[-24.11,58.57],[-24.69,58.79],[-25.28,58.98],[-25.88,59.15],[-26.48,59.3],[-27.09,59.42],[-27.7,59.52],[-28.39,59.6],[-45.75,61.33],[-44.39,75.01]]};
 function buildWindows() {
-  const W = 1.4, H = 1.6, SILL = 0.9, MOD = 3.0, MARGIN = 0.9, OFF = 0.05, TURN = 0.52;
-  const pos = [];
+  // modernizm: przeszklenia 2,4 × 2,5 m (parapet 0,25 m), moduł 3,0 m; balkony 1,6 m co drugie okno od 1. piętra
+  const W = 2.4, H = 2.5, SILL = 0.25, MOD = 3.0, MARGIN = 0.6, OFF = 0.05, TURN = 0.52;
+  const BAL_D = 1.6, BAL_T = 0.2, RAIL = 1.1, BAL_EXT = 0.35;
+  const glass = [], slab = [], rail = [];
   const pointAt = (run, s) => {
     for (const g of run) { if (s <= g.L) return [g.p[0] + g.dx * s, g.p[1] + g.dy * s]; s -= g.L; }
     const g = run[run.length - 1]; return [g.q[0], g.q[1]];
   };
   const turn = (a, b) => Math.acos(Math.max(-1, Math.min(1, a.dx * b.dx + a.dy * b.dy)));
-  const quad = (a, b, z0, z1) => {
-    const v = [P(a[0], a[1], z0), P(b[0], b[1], z0), P(b[0], b[1], z1), P(a[0], a[1], z1)];
-    for (const i of [0, 1, 2, 0, 2, 3]) pos.push(v[i].x, v[i].y, v[i].z);
-  };
+  const push = (arr, v) => { for (const i of [0, 1, 2, 0, 2, 3]) arr.push(v[i].x, v[i].y, v[i].z); };
+  const vq = (a, b, z0, z1) => [P(a[0], a[1], z0), P(b[0], b[1], z0), P(b[0], b[1], z1), P(a[0], a[1], z1)];
+  const flat = (a, b, c, d, z) => [P(a[0], a[1], z), P(b[0], b[1], z), P(c[0], c[1], z), P(d[0], d[1], z)];
+  let nWin = 0, nBal = 0;
   for (const b of BUILDINGS) {
     let ring = RINGS[b.n]; if (!ring) continue;
     let a2 = 0; ring.forEach((p, i) => { const q = ring[(i + 1) % ring.length]; a2 += p[0] * q[1] - q[0] * p[1]; });
@@ -1142,18 +1144,68 @@ function buildWindows() {
       const L = run.reduce((a, g) => a + g.L, 0), cnt = Math.floor((L - 2 * MARGIN + (MOD - W)) / MOD);
       if (cnt < 1) continue;
       const s0 = (L - (cnt * MOD - (MOD - W))) / 2 + W / 2;
+      const balRun = L >= 5.5;                                   // balkony na elewacjach od 5,5 m
       for (let w = 0; w < cnt; w++) {
-        const A = pointAt(run, s0 + w * MOD - W / 2), B = pointAt(run, s0 + w * MOD + W / 2);
-        const tx = B[0] - A[0], ty = B[1] - A[1], tl = Math.hypot(tx, ty) || 1, nx = ty / tl, ny = -tx / tl;   // normalna na zewnątrz
+        const sc = s0 + w * MOD;
+        const A = pointAt(run, sc - W / 2), B = pointAt(run, sc + W / 2);
+        const tx = B[0] - A[0], ty = B[1] - A[1], tl = Math.hypot(tx, ty) || 1, ux = tx / tl, uy = ty / tl, nx = uy, ny = -ux;   // normalna na zewnątrz
         const a = [A[0] + nx * OFF, A[1] + ny * OFF], c = [B[0] + nx * OFF, B[1] + ny * OFF];
-        for (let f = 0; f < b.f; f++) { const z0 = b.pm + f * 3.2 + SILL; quad(a, c, z0, z0 + H); }
+        const hasBal = balRun && w % 2 === 1;
+        for (let f = 0; f < b.f; f++) {
+          const fl = b.pm + f * 3.2;
+          push(glass, vq(a, c, fl + SILL, fl + SILL + H)); nWin++;
+          if (!hasBal || f === 0) continue;
+          // płyta balkonu (wspornik) i szklana balustrada z trzech stron
+          const p0 = [A[0] - ux * BAL_EXT, A[1] - uy * BAL_EXT], p1 = [B[0] + ux * BAL_EXT, B[1] + uy * BAL_EXT];
+          const q1 = [p1[0] + nx * BAL_D, p1[1] + ny * BAL_D], q0 = [p0[0] + nx * BAL_D, p0[1] + ny * BAL_D];
+          push(slab, flat(p0, p1, q1, q0, fl)); push(slab, flat(p0, q0, q1, p1, fl - BAL_T));
+          push(slab, vq(q0, q1, fl - BAL_T, fl)); push(slab, vq(p0, q0, fl - BAL_T, fl)); push(slab, vq(q1, p1, fl - BAL_T, fl));
+          push(rail, vq(q0, q1, fl, fl + RAIL)); push(rail, vq(p0, q0, fl, fl + RAIL)); push(rail, vq(q1, p1, fl, fl + RAIL));
+          nBal++;
+        }
       }
     }
   }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
-  const m = addConceptMesh(g, 'GLASS', '#3c4b57', { kind: 'glass', side: true, layer: 'l-cwin' });
-  m.castShadow = false;
-  return pos.length / 18;
+  const geo = arr => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); g.computeVertexNormals(); return g; };
+  const m = addConceptMesh(geo(glass), 'GLASS', '#3c4b57', { kind: 'glass', side: true, layer: 'l-cwin' }); m.castShadow = false;
+  addConceptMesh(geo(slab), 'BALCONY', '#e9e7e1', { kind: 'land', side: true, cast: true, layer: 'l-cbld' });
+  const r = addConceptMesh(geo(rail), 'RAIL_GLASS', '#bcd6e4', { kind: 'glass', side: true, glass: true, layer: 'l-cbld' }); r.castShadow = false;
+  return { nWin, nBal };
+}
+
+/* --- dachy: tarasy użytkowe (deska, szklana balustrada 1,1 m) i kioski wyjść 4,8 × 3,6 × 3,0 m --- */
+const ROOFS = [{"n":"B","deck":[[-53.88,16.63],[-52.79,17.24],[-56.5,23.76],[-50.24,27.32],[-48.39,24.06],[-46.22,25.3],[-45.6,24.22],[-43.42,25.45],[-41.1,21.37],[-42.19,20.75],[-40.33,17.49],[-41.42,16.87],[-40.8,15.79],[-49.23,10.99],[-51.08,14.25],[-52.17,13.63]],"k":[-47.49,19.0],"a":-1.0533,"deckA":154.0},{"n":"A4","deck":[[20.81,-8.46],[21.9,-7.84],[18.19,-1.33],[24.44,2.23],[26.3,-1.03],[28.47,0.21],[29.09,-0.88],[31.26,0.36],[33.59,-3.72],[32.5,-4.34],[34.36,-7.6],[33.27,-8.22],[33.89,-9.3],[25.46,-14.1],[23.6,-10.84],[22.52,-11.46]],"k":[27.2,-6.09],"a":-1.0534,"deckA":154.0},{"n":"A3","deck":[[39.36,-41.05],[40.45,-40.44],[36.74,-33.92],[42.99,-30.36],[44.85,-33.62],[47.02,-32.38],[47.64,-33.47],[49.81,-32.23],[52.14,-36.31],[51.05,-36.93],[52.91,-40.19],[51.82,-40.81],[52.44,-41.9],[44.01,-46.69],[42.15,-43.43],[41.07,-44.05]],"k":[45.75,-38.68],"a":2.0882,"deckA":154.0},{"n":"A2","deck":[[57.91,-73.65],[59.0,-73.03],[55.29,-66.51],[61.54,-62.95],[63.4,-66.21],[65.57,-64.97],[66.19,-66.06],[68.36,-64.82],[70.69,-68.9],[69.6,-69.52],[71.46,-72.78],[70.37,-73.4],[70.99,-74.49],[62.56,-79.28],[60.7,-76.03],[59.62,-76.64]],"k":[64.3,-71.27],"a":2.0882,"deckA":154.0},{"n":"A1","deck":[[76.46,-106.24],[77.54,-105.62],[73.84,-99.1],[80.09,-95.54],[81.95,-98.8],[84.12,-97.56],[84.74,-98.65],[86.91,-97.41],[89.24,-101.5],[88.15,-102.11],[90.0,-105.37],[88.92,-105.99],[89.54,-107.08],[81.11,-111.88],[79.25,-108.62],[78.17,-109.24]],"k":[82.85,-103.87],"a":-1.0534,"deckA":154.0},{"n":"D_N","deck":[[-80.47,60.9],[-80.38,61.85],[-77.89,61.6],[-77.12,69.36],[-78.37,69.49],[-78.27,70.43],[-74.54,70.06],[-74.42,71.3],[-69.44,70.81],[-69.32,72.05],[-65.89,71.71],[-67.46,55.84],[-69.95,56.09],[-70.07,54.84],[-78.48,55.68],[-78.36,56.92],[-79.6,57.05],[-79.23,60.78]],"k":[-72.13,64.19],"a":-1.6698,"deckA":181.0},{"n":"D_S","deck":[[-80.34,49.58],[-80.0,53.02],[-67.86,51.81],[-68.7,43.4],[-71.19,43.65],[-71.31,42.41],[-72.25,42.5],[-72.13,43.74],[-79.59,44.48],[-79.1,49.46]],"k":[-73.73,48.15],"a":-0.099,"deckA":98.0},{"n":"C","deck":[[-27.1,71.88],[-24.78,71.55],[-22.61,71.06],[-19.67,70.1],[-17.63,69.2],[-15.67,68.15],[-13.6,66.81],[-11.84,65.44],[-9.59,63.33],[-7.97,61.46],[-6.05,58.73],[5.31,38.8],[-4.2,33.38],[-15.41,53.05],[-16.59,54.7],[-17.48,55.72],[-18.95,57.12],[-20.03,57.94],[-21.75,59.01],[-22.97,59.61],[-24.87,60.32],[-26.84,60.8],[-28.23,60.99],[-44.22,62.58],[-43.14,73.48]],"k":[-5.79,47.23],"a":-0.6291,"deckA":651.8}];
+function buildRoofs() {
+  const deck = [], rail = [], kWall = [], kRoof = [], kDoor = [];
+  const push = (arr, v) => { for (const i of [0, 1, 2, 0, 2, 3]) arr.push(v[i].x, v[i].y, v[i].z); };
+  const vq = (a, b, z0, z1) => [P(a[0], a[1], z0), P(b[0], b[1], z0), P(b[0], b[1], z1), P(a[0], a[1], z1)];
+  const flat = (pts, z) => pts.map(p => P(p[0], p[1], z));
+  for (const r of ROOFS) {
+    const b = BUILDINGS.find(x => x.n === r.n); if (!b) continue;
+    const z = (b.n === 'C' ? b.top + 0.04 : b.top - 0.5) + 0.08;        // poziom tarasu (dach C bez obniżenia)
+    b.roofZ = z; b.deckA = r.deckA;
+    // deska tarasowa
+    const g = new THREE.ShapeGeometry(shapeOf(r.deck)); g.rotateX(-Math.PI / 2); g.translate(0, z, 0);
+    deck.push(g);
+    // szklana balustrada po obrysie tarasu
+    for (let i = 0; i < r.deck.length; i++) push(rail, vq(r.deck[i], r.deck[(i + 1) % r.deck.length], z, z + 1.1));
+    // kiosk wyjścia na dach
+    const ca = Math.cos(r.a), sa = Math.sin(r.a), hw = 2.4, hd = 1.8, H = 3.0;
+    const c = ([u, v]) => [r.k[0] + ca * u - sa * v, r.k[1] + sa * u + ca * v];
+    const K = [c([-hw, -hd]), c([hw, -hd]), c([hw, hd]), c([-hw, hd])];
+    for (let i = 0; i < 4; i++) push(kWall, vq(K[i], K[(i + 1) % 4], z, z + H));
+    const O = [c([-hw - .3, -hd - .3]), c([hw + .3, -hd - .3]), c([hw + .3, hd + .3]), c([-hw - .3, hd + .3])];   // daszek z okapem
+    push(kRoof, flat(O, z + H + 0.25)); push(kRoof, flat([O[0], O[3], O[2], O[1]], z + H));
+    for (let i = 0; i < 4; i++) push(kRoof, vq(O[i], O[(i + 1) % 4], z + H, z + H + 0.25));
+    // przeszklone drzwi wyjściowe na dłuższej ścianie
+    push(kDoor, vq(c([-1.3, -hd - 0.04]), c([1.3, -hd - 0.04]), z, z + 2.4));
+  }
+  const geo = arr => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); g.computeVertexNormals(); return g; };
+  addConceptMesh(mergeGeometries(deck), 'DECK', '#a7784c', { kind: 'land', layer: 'l-cbld' });
+  const rr = addConceptMesh(geo(rail), 'RAIL_GLASS', '#bcd6e4', { kind: 'glass', side: true, glass: true, layer: 'l-cbld' }); rr.castShadow = false;
+  addConceptMesh(geo(kWall), 'KIOSK', '#dedbd4', { kind: 'land', side: true, cast: true, layer: 'l-cbld' });
+  addConceptMesh(geo(kRoof), 'ROOF', '#5a5f65', { kind: 'land', side: true, cast: true, layer: 'l-cbld' });
+  addConceptMesh(geo(kDoor), 'GLASS', '#3c4b57', { kind: 'glass', side: true, layer: 'l-cbld' });
 }
 
 /* --- uzupełnienia wg rysunku koncepcji ---
@@ -1581,6 +1633,7 @@ Promise.all([load('models/concept.glb', 'concept'), load('models/context.glb', '
   replaceRoads(concept);
   buildPodiums(concept);
   buildWindows();
+  buildRoofs();
   const nPark = buildParking() + buildStalls();
   const kv = document.getElementById('kpi-stalls'); if (kv) kv.textContent = nPark;
   buildHedges();
@@ -1906,25 +1959,7 @@ $('shot-copy').addEventListener('click', async () => {
 /* ---------- Granica terenu inwestycji: linia przerywana o stałej grubości + znaczniki punktów załamania ---------- */
 const siteLineMats = [];
 function buildSiteLine() {
-  const pts = [];
-  for (let i = 0; i < N_RING - 1; i++) {
-    const [ax, ay] = SITE_RING[i], [bx, by] = SITE_RING[i + 1], L = Math.hypot(bx - ax, by - ay), n = Math.max(1, Math.ceil(L / 1.5));
-    for (let k = 0; k < n; k++) { const x = ax + (bx - ax) * k / n, y = ay + (by - ay) * k / n; pts.push(x, groundSmart(x, y) + 0.45, -y); }
-  }
-  pts.push(pts[0], pts[1], pts[2]);
-  const geo = new LineGeometry(); geo.setPositions(pts);
-  const w = view.clientWidth, h = view.clientHeight;
-  // linia rozgraniczająca: biała obwódka + ciągła czerwień + ciemniejsze kreski (wzór kreska-przerwa)
-  // wszystkie warstwy linii w jednym przebiegu (przezroczyste), kolejność: obwódka → czerwień → kreski
-  const lm = o => new LineMaterial({ transparent: true, depthTest: true, depthWrite: false, ...o });
-  const halo = lm({ color: 0xffffff, linewidth: 9, opacity: 0.85 });
-  const base = lm({ color: 0xe0242a, linewidth: 4.5 });
-  const dash = lm({ color: 0x7a0c10, linewidth: 4.5, dashed: true, dashSize: 7, gapSize: 3 });
-  for (const m of [halo, base, dash]) { m.resolution.set(w, h); siteLineMats.push(m); }
-  const lines = [new Line2(geo, halo), new Line2(geo, base), new Line2(geo, dash)];
-  lines[2].computeLineDistances();
-  lines.forEach((l, i) => { l.renderOrder = 30 + i; l.frustumCulled = false; l.raycast = () => {}; scene.add(l); addToLayer('l-csite', l); });
-  // znaczniki punktów granicznych (P1–P37): słupki 2,4 m
+  // znaczniki punktów granicznych (P1–P37): słupki 2,4 m (granica jako cienka linia z modelu koncepcji)
   const post = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.3, 2.4, 10).translate(0, 1.2, 0),
     new THREE.MeshStandardMaterial({ color: 0xe0242a, roughness: .6 }), N_RING - 1);
   const m4 = new THREE.Matrix4();
