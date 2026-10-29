@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interaktywny model 3D koncepcji zabudowy dz. 100/15, 100/16, 100/19 w Kamieniu Pomorskim.">
+<title>Kamień Pomorski dz. 100/15</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: plansza-legenda po lewej (jak opis na arkuszu koncepcji), model 3D wypełnia resztę ekranu; na telefonie model u góry, legenda pod nim. */
+:root {
+  --bg: #e9eef0;
+  --panel: #f7f9f9;
+  --fg: #172126;
+  --muted: #59666e;
+  --line: #d2dade;
+  --accent: #1d5c8f;
+  --accent-soft: #dce8f2;
+  --site: #d23a2a;
+  --sky: #dfe6ea;
+  --hud: rgba(247, 249, 249, .92);
+  --c-bld: #9aa4ab; --c-road: #3d4145; --c-park: #7c7f82; --c-path: #c9c2b2; --c-terr: #b5a28a;
+  --c-green: #6f9a55; --c-play: #c7784a; --c-out: #b7c39b;
+  --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101619; --panel: #151d21; --fg: #e3e9eb; --muted: #8e9ba2; --line: #27333a;
+    --accent: #79afd9; --accent-soft: #1d3142; --site: #f0705c; --sky: #19242a; --hud: rgba(21, 29, 33, .92);
+    --c-bld: #8a959c; --c-road: #565b60; --c-park: #6e7275; --c-path: #a39d90; --c-terr: #9c8a74;
+    --c-green: #6b9452; --c-play: #c27650; --c-out: #8f9b78;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101619; --panel: #151d21; --fg: #e3e9eb; --muted: #8e9ba2; --line: #27333a;
+  --accent: #79afd9; --accent-soft: #1d3142; --site: #f0705c; --sky: #19242a; --hud: rgba(21, 29, 33, .92);
+  --c-bld: #8a959c; --c-road: #565b60; --c-park: #6e7275; --c-path: #a39d90; --c-terr: #9c8a74;
+  --c-green: #6b9452; --c-play: #c27650; --c-out: #8f9b78;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 14px; line-height: 1.45; }
+.app { height: 100%; display: grid; grid-template-columns: minmax(300px, 360px) 1fr; }
+.panel {
+  background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; min-width: 0;
+  padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: 20px; padding-block: 22px 28px;
+  display: flex; flex-direction: column; gap: 26px;
+}
+.eyebrow { font: 500 11px/1.3 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 650 28px/1.05 var(--f-display); font-stretch: 78%; letter-spacing: -.01em; margin: 6px 0 8px; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; }
+.sub b { color: var(--fg); font-weight: 600; }
+h2 { font: 600 12px/1.2 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; margin: 0 0 10px; color: var(--fg); display: flex; justify-content: space-between; gap: 8px; }
+h2 span { color: var(--muted); font-weight: 400; letter-spacing: .02em; text-transform: none; }
+.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+.kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.kpi { background: var(--panel); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.kpi .v { font: 500 19px/1.1 var(--f-mono); font-variant-numeric: tabular-nums; }
+.kpi .v small { font-size: 12px; color: var(--muted); margin-left: 2px; }
+.kpi .k { font-size: 12px; color: var(--muted); }
+
+.bar { display: flex; height: 14px; margin: 4px 0 10px; outline: 1px solid var(--line); }
+.bar i { display: block; height: 100%; }
+.legend { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 3px; }
+.legend li { display: grid; grid-template-columns: 10px 1fr auto 44px; gap: 8px; align-items: center; font-size: 13px; }
+.legend .sw { width: 10px; height: 10px; }
+.legend .a, .legend .p { font: 12px var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; color: var(--muted); }
+.legend .a { color: var(--fg); }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { font: 500 11px var(--f-mono); color: var(--muted); text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--line); letter-spacing: .03em; }
+th:first-child, td:first-child { text-align: left; }
+td { padding: 6px; text-align: right; border-bottom: 1px solid var(--line); font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: var(--accent-soft); }
+tbody tr.sel td { background: var(--accent-soft); color: var(--accent); }
+tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+td .tag { display: inline-block; min-width: 34px; font-weight: 500; }
+tfoot td { font-weight: 500; border-bottom: 0; color: var(--fg); }
+
+.layers { display: grid; gap: 2px; }
+.layers label { display: flex; align-items: center; gap: 9px; padding: 4px 0; cursor: pointer; font-size: 13.5px; }
+.layers input { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
+.layers .grp { font: 500 11px var(--f-mono); color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin-top: 8px; }
+.layers .grp:first-child { margin-top: 0; }
+
+.seg { display: inline-flex; border: 1px solid var(--line); }
+.seg button { font: 500 12px var(--f-mono); background: transparent; color: var(--fg); border: 0; padding: 6px 10px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--panel); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sunrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+input[type=range] { width: 100%; accent-color: var(--accent); margin: 10px 0 4px; }
+.sunread { display: flex; justify-content: space-between; font: 12px var(--f-mono); color: var(--muted); }
+.sunread b { color: var(--fg); font-weight: 500; }
+.src { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; margin-top: auto; }
+.src p { margin: 0 0 6px; }
+
+/* Widok 3D */
+.view { position: relative; min-width: 0; overflow: hidden; background: var(--sky); }
+.view canvas { display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+.hud { position: absolute; background: var(--hud); border: 1px solid var(--line); backdrop-filter: blur(6px); }
+.cams { left: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; max-width: calc(100% - 100px); }
+.cams button { font: 500 12px var(--f-body); background: transparent; color: var(--fg); border: 0; padding: 8px 12px; cursor: pointer; }
+.cams button + button { border-left: 1px solid var(--line); }
+.cams button:hover { color: var(--accent); }
+.cams button[aria-pressed="true"] { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+.modes { right: max(14px, env(safe-area-inset-right, 0px)); top: 14px; display: flex; }
+.modes button { font: 500 12px var(--f-body); background: transparent; color: var(--fg); border: 0; padding: 7px 11px; cursor: pointer; }
+.modes button + button { border-left: 1px solid var(--line); }
+.modes button[aria-pressed="true"] { background: var(--accent); color: var(--panel); }
+.compass { right: max(14px, env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; }
+.compass svg { width: 46px; height: 46px; transition: none; }
+.card { right: max(14px, env(safe-area-inset-right, 0px)); top: 58px; width: 250px; max-width: calc(100% - 28px); padding: 14px 16px 12px; }
+.card h3 { font: 650 22px/1 var(--f-display); font-stretch: 78%; margin: 2px 0 10px; }
+.card dl { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; font-size: 13px; }
+.card dt { color: var(--muted); }
+.card dd { margin: 0; font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.card .x { position: absolute; right: 6px; top: 6px; background: none; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; width: 28px; height: 28px; }
+.card .note { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+.lbl { position: absolute; left: 0; top: 0; pointer-events: none; font: 600 12px var(--f-mono); color: var(--fg); background: var(--hud); border: 1px solid var(--line); padding: 1px 6px; transform: translate(-50%, -100%); white-space: nowrap; will-change: transform; }
+.lbl.sel { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.loading div { background: var(--hud); border: 1px solid var(--line); padding: 12px 16px; font: 12px var(--f-mono); color: var(--muted); }
+.hint { left: 14px; top: 14px; padding: 6px 10px; font-size: 12px; color: var(--muted); }
+
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 58vh auto; height: auto; }
+  html, body { height: auto; }
+  .view { order: -1; height: 58vh; }
+  .panel { border-right: 0; border-top: 1px solid var(--line); overflow: visible; padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); }
+  .card { top: auto; bottom: 64px; width: auto; left: 14px; }
+  .hint { display: none; }
+  .cams button { padding: 7px 9px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel" aria-label="Opis koncepcji">
+    <header>
+      <div class="eyebrow">Koncepcja zagospodarowania · model 3D</div>
+      <h1>Kamień Pomorski, dz. 100/15</h1>
+      <p class="sub">Działki <b>100/15, 100/16, 100/19</b>, obręb 0003 Kamień Pomorski. Teren inwestycji <b class="num">18 933 m²</b>, kontekst w promieniu 500 m.</p>
+    </header>
+
+    <section aria-labelledby="h-bil">
+      <h2 id="h-bil">Bilans koncepcji</h2>
+      <div class="kpis">
+        <div class="kpi"><span class="v">2 508,7<small>m²</small></span><span class="k">pow. zabudowy · 13,3%</span></div>
+        <div class="kpi"><span class="v">11 170<small>m²</small></span><span class="k">pow. całkowita (PUC)</span></div>
+        <div class="kpi"><span class="v">0,59</span><span class="k">intensywność zabudowy</span></div>
+        <div class="kpi"><span class="v">97</span><span class="k">miejsc postojowych</span></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="h-zag">
+      <h2 id="h-zag">Zagospodarowanie terenu <span>m² · %</span></h2>
+      <div class="bar" id="bar" role="img" aria-label="Udział form zagospodarowania w powierzchni terenu"></div>
+      <ul class="legend" id="legend"></ul>
+    </section>
+
+    <section aria-labelledby="h-bud">
+      <h2 id="h-bud">Budynki <span>kliknij, by pokazać</span></h2>
+      <table>
+        <thead><tr><th>Bud.</th><th>Kond.</th><th>Zabud. m²</th><th>PUC m²</th></tr></thead>
+        <tbody id="btab"></tbody>
+        <tfoot><tr><td>Razem</td><td></td><td>2 508,7</td><td>11 170,2</td></tr></tfoot>
+      </table>
+    </section>
+
+    <section aria-labelledby="h-war">
+      <h2 id="h-war">Warstwy</h2>
+      <div class="layers" id="layers"></div>
+    </section>
+
+    <section aria-labelledby="h-sun">
+      <h2 id="h-sun">Nasłonecznienie</h2>
+      <div class="sunrow">
+        <div class="seg" role="group" aria-label="Data">
+          <button type="button" id="d-0321" data-d="3-21" aria-pressed="true">21.03</button>
+          <button type="button" id="d-0621" data-d="6-21" aria-pressed="false">21.06</button>
+          <button type="button" id="d-1221" data-d="12-21" aria-pressed="false">21.12</button>
+        </div>
+        <span class="num" id="clock" style="font-size:18px">12:00</span>
+      </div>
+      <input type="range" id="time" min="5" max="21" step="0.25" value="12" aria-label="Godzina">
+      <div class="sunread"><span>azymut <b id="az">–</b></span><span>wysokość <b id="el">–</b></span></div>
+    </section>
+
+    <footer class="src">
+      <p>Układ PL-2000 strefa 5 (EPSG:2176), wysokości PL-EVRF2007-NH. Punkt 0,0 modelu: E 5 485 377, N 5 982 456.</p>
+      <p>Dane: GUGiK (ULDK, NMT/NMPT 1 m, ortofoto), BDOT10k, © OpenStreetMap (ODbL). Model wygenerowany w Blenderze, uproszczony do podglądu w przeglądarce.</p>
+    </footer>
+  </aside>
+
+  <main class="view" id="view">
+    <div class="hud hint">Obrót: lewy przycisk · przesuw: prawy · zoom: kółko</div>
+    <div class="hud modes" role="group" aria-label="Styl modelu">
+      <button type="button" id="m-color" aria-pressed="true">Kolor</button>
+      <button type="button" id="m-clay" aria-pressed="false">Makieta</button>
+    </div>
+    <div class="hud cams" role="group" aria-label="Widoki">
+      <button type="button" id="c-aerial" data-cam="aerial" aria-pressed="true">Lotniczy</button>
+      <button type="button" id="c-plan" data-cam="plan" aria-pressed="false">Plan</button>
+      <button type="button" id="c-north" data-cam="north" aria-pressed="false">Od północy</button>
+      <button type="button" id="c-eye" data-cam="eye" aria-pressed="false">Z wjazdu</button>
+    </div>
+    <button type="button" class="hud compass" id="compass" aria-label="Ustaw północ u góry">
+      <svg viewBox="-24 -24 48 48" id="needle" aria-hidden="true">
+        <circle r="21" fill="none" stroke="var(--line)" />
+        <path d="M0-17 6 2H-6Z" fill="var(--site)" />
+        <path d="M0 17 6 2H-6Z" fill="var(--muted)" />
+        <text y="-6" x="0" text-anchor="middle" font-size="0" fill="var(--fg)">N</text>
+      </svg>
+    </button>
+    <div class="hud card" id="card" hidden>
+      <button type="button" class="x" id="card-x" aria-label="Zamknij">×</button>
+      <div class="eyebrow" id="card-eb">Budynek</div>
+      <h3 id="card-h">–</h3>
+      <dl id="card-dl"></dl>
+      <p class="note" id="card-note"></p>
+    </div>
+    <div id="labels"></div>
+    <div class="loading" id="loading"><div id="loadmsg">Wczytywanie modelu…</div></div>
+  </main>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+/* ---------- Dane koncepcji (z concept3d.json) ---------- */
+const SITE = 18933;
+const BUILDINGS = [
+  { n: 'A1', f: 4, t: 'A', fp: 240.6, gfa: 962.5, base: 0.62, top: 14.5, pm: 1.10, c: [83.4, -103.0] },
+  { n: 'A2', f: 4, t: 'A', fp: 240.6, gfa: 962.5, base: 0.57, top: 14.45, pm: 1.05, c: [64.9, -70.4] },
+  { n: 'A3', f: 4, t: 'A', fp: 240.6, gfa: 962.5, base: 0.83, top: 14.7, pm: 1.30, c: [46.3, -37.8] },
+  { n: 'A4', f: 4, t: 'A', fp: 240.6, gfa: 962.5, base: 1.18, top: 15.05, pm: 1.65, c: [27.8, -5.2] },
+  { n: 'B', f: 4, t: 'A', fp: 240.6, gfa: 962.5, base: 1.78, top: 15.65, pm: 2.25, c: [-46.9, 19.9] },
+  { n: 'C', f: 5, t: '', fp: 857.3, gfa: 4286.6, base: 1.58, top: 18.65, pm: 2.05, c: [-17.2, 63.4] },
+  { n: 'D_N', f: 5, t: '', fp: 278.1, gfa: 1390.6, base: 1.78, top: 18.85, pm: 2.25, c: [-75.7, 63.6] },
+  { n: 'D_S', f: 4, t: '', fp: 170.3, gfa: 681.3, base: 1.79, top: 15.65, pm: 2.25, c: [-75.3, 45.0] },
+];
+const LANDUSE = [
+  { k: 'Zabudowa', a: 2508.7, c: '--c-bld' },
+  { k: 'Jezdnie', a: 2725.8, c: '--c-road' },
+  { k: 'Parkingi', a: 1212.5, c: '--c-park' },
+  { k: 'Chodniki', a: 2175.4, c: '--c-path' },
+  { k: 'Tarasy', a: 2710.8, c: '--c-terr' },
+  { k: 'Plac zabaw', a: 278.1 + 46.7 + 26.0, c: '--c-play' },
+  { k: 'Zieleń projektowana', a: 4574.3, c: '--c-green' },
+  { k: 'Poza zasięgiem koncepcji', a: 2670.0, c: '--c-out' },
+];
+const fmt = (v, d = 1) => v.toLocaleString('pl-PL', { minimumFractionDigits: d, maximumFractionDigits: d });
+const label = n => n.replace('_', '-');
+
+/* ---------- Panel: bilans i tabela ---------- */
+const bar = document.getElementById('bar'), legend = document.getElementById('legend');
+for (const u of LANDUSE) {
+  const pct = u.a / SITE * 100;
+  const i = document.createElement('i'); i.style.width = pct + '%'; i.style.background = `var(${u.c})`; i.title = `${u.k}: ${fmt(u.a)} m²`; bar.append(i);
+  const li = document.createElement('li');
+  li.innerHTML = `<span class="sw" style="background:var(${u.c})"></span><span>${u.k}</span><span class="a">${fmt(u.a)}</span><span class="p">${fmt(pct)}%</span>`;
+  legend.append(li);
+}
+const btab = document.getElementById('btab');
+for (const b of BUILDINGS) {
+  const tr = document.createElement('tr'); tr.tabIndex = 0; tr.dataset.b = b.n; tr.id = 'row-' + b.n;
+  tr.innerHTML = `<td><span class="tag">${label(b.n)}</span></td><td>${b.f}</td><td>${fmt(b.fp)}</td><td>${fmt(b.gfa)}</td>`;
+  tr.addEventListener('click', () => select(b.n, true));
+  tr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(b.n, true); } });
+  btab.append(tr);
+}
+
+/* ---------- Scena ---------- */
+const view = document.getElementById('view');
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+view.prepend(renderer.domElement);
+renderer.domElement.tabIndex = 0;
+renderer.domElement.setAttribute('aria-label', 'Model 3D koncepcji');
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 6000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI * 0.495; controls.minDistance = 3; controls.maxDistance = 1800;
+controls.screenSpacePanning = false;
+
+// Blender (x=E, y=N, z=H)  ->  three (x, y=H, z=-N)
+const P = (x, y, h) => new THREE.Vector3(x, h, -y);
+const CENTER = P(19, -52, 2);
+
+const hemi = new THREE.HemisphereLight(0xdfe9f2, 0x8a8170, 1.1);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff3e2, 2.6);
+sun.castShadow = true;
+sun.shadow.mapSize.set(4096, 4096);
+const sc = sun.shadow.camera; sc.left = -230; sc.right = 230; sc.top = 230; sc.bottom = -230; sc.near = 10; sc.far = 1400;
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.35;
+sun.target.position.copy(CENTER);
+scene.add(sun, sun.target);
+
+function applyTheme() {
+  const sky = new THREE.Color(css('--sky'));
+  scene.background = sky;
+  scene.fog = new THREE.Fog(sky, 700, 1700);
+  if (clayMode) applyMode();
+}
+const mq = matchMedia('(prefers-color-scheme: dark)');
+mq.addEventListener?.('change', applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+/* ---------- Warstwy ---------- */
+const LAYERS = [
+  { g: 'Koncepcja' },
+  { id: 'l-cbld', name: 'Budynki projektowane', re: /^C3D_BLD/, on: true },
+  { id: 'l-cland', name: 'Drogi, parkingi, chodniki, zieleń', re: /^CONCEPT3D_/, on: true },
+  { id: 'l-ctree', name: 'Drzewa nowe i zachowane', re: /^C3D_TREE/, on: true },
+  { id: 'l-csite', name: 'Granica terenu inwestycji', re: /^C3D_SITE/, on: true },
+  { id: 'l-cgrid', name: 'Siatka modularna 5 m', re: /^C3D_GRID/, on: false },
+  { g: 'Kontekst 500 m' },
+  { id: 'l-xbld', name: 'Zabudowa istniejąca', re: /^BLD_/, on: true },
+  { id: 'l-xstr', name: 'Ulice, chodniki, parkingi', re: /^(ROAD|PATH|PARKING|RAIL|WALL|RETAINING|HEDGE)/, on: true },
+  { id: 'l-xgrn', name: 'Zieleń i drzewa', re: /^(GREEN|TREE)/, on: true },
+  { id: 'l-xter', name: 'Teren (NMT)', re: /^TERRAIN/, on: true },
+  { id: 'l-xwat', name: 'Zalew Kamieński, marina, pomosty', re: /^(WATER|MARINA|PIER)/, on: true },
+  { id: 'l-xegb', name: 'Działki ewidencyjne, granica MPZP', re: /^(EGIB|MPZP)/, on: false },
+];
+const layerNodes = new Map(LAYERS.filter(l => l.id).map(l => [l.id, []]));
+const layersEl = document.getElementById('layers');
+for (const l of LAYERS) {
+  if (l.g) { const d = document.createElement('div'); d.className = 'grp'; d.textContent = l.g; layersEl.append(d); continue; }
+  const lab = document.createElement('label');
+  lab.innerHTML = `<input type="checkbox" id="${l.id}" ${l.on ? 'checked' : ''}> ${l.name}`;
+  lab.querySelector('input').addEventListener('change', e => { l.on = e.target.checked; for (const o of layerNodes.get(l.id)) o.visible = l.on; if (l.id === 'l-cbld') updateLabels(); });
+  layersEl.append(lab);
+}
+
+/* ---------- Materiały ---------- */
+const SMOOTH = /TERRAIN|GROUND|GREEN|zielen|MOUND|WATER|MEADOW|TREE|TREES/;
+const origMat = new Map();
+const clayCtx = new THREE.MeshStandardMaterial({ color: 0xeceae6, roughness: 0.95, flatShading: true });
+const clayGround = new THREE.MeshStandardMaterial({ color: 0xe4e2dd, roughness: 1 });
+const clayWater = new THREE.MeshStandardMaterial({ color: 0xc9d6de, roughness: 0.6 });
+const clayTree = new THREE.MeshStandardMaterial({ color: 0xd9dfd6, roughness: 1, flatShading: true });
+const clayNew = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, flatShading: true });
+let clayMode = false;
+const allMeshes = [];
+
+/* ---------- Budynki projektowane: wybór ---------- */
+const bldMeshes = new Map();   // nazwa -> [mesh]
+const pickables = [];
+let selected = null, hovered = null;
+
+function tint(name, kind) {
+  for (const m of bldMeshes.get(name) || []) {
+    const mat = m.material;
+    if (!mat.emissive) continue;
+    if (kind === 'sel') { mat.emissive.set(0x1d5c8f); mat.emissiveIntensity = 1.1; }
+    else if (kind === 'hov') { mat.emissive.set(0x1d5c8f); mat.emissiveIntensity = 0.5; }
+    else { mat.emissive.set(0x000000); mat.emissiveIntensity = 0; }
+  }
+}
+function select(name, fly) {
+  if (selected && selected !== name) tint(selected, null);
+  selected = name;
+  document.querySelectorAll('#btab tr').forEach(tr => tr.classList.toggle('sel', tr.dataset.b === name));
+  for (const [n, el] of labels) el.classList.toggle('sel', n === name);
+  const card = document.getElementById('card');
+  if (!name) { card.hidden = true; return; }
+  tint(name, 'sel');
+  const b = BUILDINGS.find(x => x.n === name);
+  document.getElementById('card-eb').textContent = b.t === 'A' ? 'Budynek typu A' : 'Budynek';
+  document.getElementById('card-h').textContent = label(b.n);
+  const rows = [
+    ['Kondygnacje nadziemne', b.f],
+    ['Wysokość kondygnacji', '3,20 m'],
+    ['Pow. zabudowy', fmt(b.fp) + ' m²'],
+    ['Pow. całkowita (PUC)', fmt(b.gfa) + ' m²'],
+    ['±0,00 (EVRF2007)', fmt(b.pm, 2) + ' m'],
+    ['Attyka (EVRF2007)', fmt(b.top, 2) + ' m'],
+    ['Wysokość od terenu', fmt(b.top - b.base, 2) + ' m'],
+  ];
+  document.getElementById('card-dl').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  document.getElementById('card-note').textContent = `${fmt(b.gfa / 11170.2 * 100)}% powierzchni całkowitej koncepcji`;
+  card.hidden = false;
+  if (fly) {
+    const t = P(b.c[0], b.c[1], b.base + 6);
+    const dir = camera.position.clone().sub(controls.target).setY(0).normalize();
+    if (!isFinite(dir.x)) dir.set(0.6, 0, 0.8);
+    const dist = 70 + Math.sqrt(b.fp) * 3;
+    const pos = t.clone().addScaledVector(dir, dist).setY(b.top + dist * 0.75);
+    flyTo(pos, t);
+    setCamBtn(null);
+  }
+}
+document.getElementById('card-x').addEventListener('click', () => select(null));
+
+/* ---------- Etykiety budynków ---------- */
+const labels = new Map();
+const labelsEl = document.getElementById('labels');
+for (const b of BUILDINGS) {
+  const el = document.createElement('div'); el.className = 'lbl'; el.textContent = label(b.n); el.hidden = true;
+  labelsEl.append(el); labels.set(b.n, el);
+}
+const vtmp = new THREE.Vector3();
+let modelReady = false;
+function updateLabels() {
+  const on = LAYERS.find(l => l.id === 'l-cbld').on && modelReady;
+  const w = view.clientWidth, h = view.clientHeight;
+  for (const b of BUILDINGS) {
+    const el = labels.get(b.n);
+    vtmp.copy(P(b.c[0], b.c[1], b.top + 2.5)).project(camera);
+    const vis = on && vtmp.z < 1 && Math.abs(vtmp.x) < 1.05 && Math.abs(vtmp.y) < 1.05;
+    el.hidden = !vis;
+    if (vis) el.style.transform = `translate(${(vtmp.x + 1) / 2 * w}px, ${(1 - vtmp.y) / 2 * h}px) translate(-50%, -100%)`;
+  }
+}
+
+/* ---------- Wczytanie modeli ---------- */
+const loader = new GLTFLoader();
+loader.setMeshoptDecoder(MeshoptDecoder);
+const loadmsg = document.getElementById('loadmsg');
+const prog = { concept: 0, context: 0 };
+const TOTAL = 742296 + 3139340;
+const showProg = () => { loadmsg.textContent = `Wczytywanie modelu… ${Math.round((prog.concept + prog.context) / TOTAL * 100)}%`; };
+
+function prepare(root, isConcept) {
+  for (const top of [...root.children]) {
+    const name = top.name || '';
+    for (const l of LAYERS) if (l.id && l.re.test(name)) { layerNodes.get(l.id).push(top); top.visible = l.on; }
+    const bm = isConcept && name.match(/^C3D_BLD_(.+?)_\d+k/);
+    top.traverse(o => {
+      if (!o.isMesh) return;
+      const g = o.geometry;
+      if (!g.attributes.normal) g.computeVertexNormals();
+      const mat = o.material;
+      const smooth = SMOOTH.test(name);
+      if (!smooth && mat && !mat.flatShading) { mat.flatShading = true; mat.needsUpdate = true; }
+      if (mat) { mat.side = THREE.FrontSide; }
+      const isBld = /^(C3D_BLD|BLD_)/.test(name);
+      const isTree = /TREE/.test(name);
+      o.castShadow = isBld || isTree || /^(WALL|PIER|HEDGE)/.test(name);
+      o.receiveShadow = !isTree;
+      if (bm) {
+        o.material = mat.clone();
+        const key = bm[1];
+        if (!bldMeshes.has(key)) bldMeshes.set(key, []);
+        bldMeshes.get(key).push(o);
+        o.userData.bld = key; pickables.push(o);
+      }
+      origMat.set(o, o.material);
+      o.userData.kind = isConcept ? (bm ? 'new' : (isTree ? 'tree' : (/GROUND/.test(name) ? 'ground' : 'land'))) :
+        (/^TERRAIN|^GREEN/.test(name) ? 'ground' : /^WATER/.test(name) ? 'water' : isTree ? 'tree' : 'ctx');
+      allMeshes.push(o);
+    });
+  }
+}
+
+function load(url, key) {
+  return new Promise((res, rej) => loader.load(url, g => res(g.scene), e => { prog[key] = e.loaded; showProg(); }, rej));
+}
+Promise.all([load('models/concept.glb', 'concept'), load('models/context.glb', 'context')]).then(([concept, context]) => {
+  prepare(context, false); prepare(concept, true);
+  // lekko podnieś koncepcję, by nie migotała z terenem kontekstu
+  concept.position.y += 0.03;
+  scene.add(context, concept);
+  modelReady = true;
+  scene.updateMatrixWorld(true);
+  fixEye();
+  document.getElementById('loading').hidden = true;
+  applyTheme();
+}).catch(err => {
+  console.error(err);
+  loadmsg.textContent = 'Nie udało się wczytać modelu. Odśwież stronę.';
+});
+
+/* ---------- Tryb makiety ---------- */
+function applyMode() {
+  for (const o of allMeshes) {
+    if (!clayMode) { o.material = origMat.get(o); continue; }
+    const k = o.userData.kind;
+    if (k === 'new') o.material = origMat.get(o); // budynki projektowane zostają w kolorze
+    else if (k === 'ground') o.material = clayGround;
+    else if (k === 'water') o.material = clayWater;
+    else if (k === 'tree') o.material = clayTree;
+    else if (k === 'land') o.material = clayNew;
+    else o.material = clayCtx;
+  }
+}
+for (const [id, v] of [['m-color', false], ['m-clay', true]]) {
+  document.getElementById(id).addEventListener('click', () => {
+    clayMode = v; applyMode();
+    document.getElementById('m-color').setAttribute('aria-pressed', String(!v));
+    document.getElementById('m-clay').setAttribute('aria-pressed', String(v));
+  });
+}
+
+/* ---------- Widoki kamery ---------- */
+const CAMS = {
+  aerial: { pos: P(190, -300, 175), tgt: P(10, -30, 2) },
+  plan:   { pos: P(19, -52.1, 560), tgt: P(19, -52, 0) },
+  north:  { pos: P(-40, 320, 120), tgt: P(15, -40, 4) },
+  eye:    { pos: P(66, -110.9, 3), tgt: P(24.4, -37.9, 5) },
+};
+// wysokość terenu pod punktem (do widoku z poziomu pieszego)
+function groundAt(v) {
+  const r = new THREE.Raycaster(new THREE.Vector3(v.x, 300, v.z), new THREE.Vector3(0, -1, 0));
+  const hit = r.intersectObjects(allMeshes.filter(m => /ground|land/.test(m.userData.kind)), false)[0];
+  return hit ? hit.point.y : v.y - 1.7;
+}
+function fixEye() {
+  CAMS.eye.pos.y = groundAt(CAMS.eye.pos) + 1.7;
+  CAMS.eye.tgt.y = groundAt(CAMS.eye.tgt) + 4;
+}
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let anim = null;
+function flyTo(pos, tgt) {
+  if (reduced) { camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  anim = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos.clone(), t1: tgt.clone(), s: performance.now(), d: 1100 };
+}
+function setCamBtn(k) { document.querySelectorAll('.cams button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cam === k))); }
+document.querySelectorAll('.cams button').forEach(b => b.addEventListener('click', () => { const c = CAMS[b.dataset.cam]; flyTo(c.pos, c.tgt); setCamBtn(b.dataset.cam); }));
+camera.position.copy(CAMS.aerial.pos); controls.target.copy(CAMS.aerial.tgt); controls.update();
+document.getElementById('compass').addEventListener('click', () => {
+  const t = controls.target.clone(); const d = camera.position.distanceTo(t);
+  const pitch = Math.asin((camera.position.y - t.y) / d);
+  flyTo(new THREE.Vector3(t.x, t.y + d * Math.sin(pitch), t.z + d * Math.cos(pitch)), t); setCamBtn(null);
+});
+controls.addEventListener('start', () => { anim = null; });
+
+/* ---------- Słońce (Kamień Pomorski 53,97°N 14,78°E) ---------- */
+const LAT = 53.97285, LON = 14.77713, rad = Math.PI / 180;
+let day = [3, 21];
+function sunPos(dateUTC) {
+  const d = dateUTC / 86400000 + 2440587.5 - 2451545.0;
+  const g = (357.529 + 0.98560028 * d) * rad, q = 280.459 + 0.98564736 * d;
+  const L = (q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad;
+  const e = (23.439 - 0.00000036 * d) * rad;
+  const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L));
+  const dec = Math.asin(Math.sin(e) * Math.sin(L));
+  const gmst = (18.697374558 + 24.06570982441908 * d) % 24;
+  const ha = (gmst * 15 + LON) * rad - ra;
+  const lat = LAT * rad;
+  const el = Math.asin(Math.sin(lat) * Math.sin(dec) + Math.cos(lat) * Math.cos(dec) * Math.cos(ha));
+  const az = Math.atan2(-Math.sin(ha), Math.tan(dec) * Math.cos(lat) - Math.sin(lat) * Math.cos(ha));
+  return { az: (az / rad + 360) % 360, el: el / rad };
+}
+const timeEl = document.getElementById('time');
+function updateSun() {
+  const h = +timeEl.value;
+  const off = day[0] >= 4 && day[0] <= 10 ? 2 : 1; // CEST / CET
+  const t = Date.UTC(2026, day[0] - 1, day[1], 0, 0) + (h - off) * 3600000;
+  const { az, el } = sunPos(t);
+  const hh = Math.floor(h), mm = Math.round((h - hh) * 60);
+  document.getElementById('clock').textContent = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  document.getElementById('az').textContent = fmt(az, 0) + '°';
+  document.getElementById('el').textContent = fmt(el, 1) + '°';
+  const e = Math.max(el, 0.5) * rad, a = az * rad;
+  const dir = new THREE.Vector3(Math.sin(a) * Math.cos(e), Math.sin(e), -Math.cos(a) * Math.cos(e));
+  sun.position.copy(CENTER).addScaledVector(dir, 600);
+  const up = THREE.MathUtils.clamp(el / 12, 0, 1);
+  sun.intensity = 2.8 * up;
+  sun.color.setHSL(0.09, 0.35 + 0.4 * (1 - up), 0.85 + 0.1 * up);
+  hemi.intensity = 0.45 + 0.75 * THREE.MathUtils.clamp((el + 6) / 20, 0, 1);
+}
+timeEl.addEventListener('input', updateSun);
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  day = b.dataset.d.split('-').map(Number);
+  document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  updateSun();
+}));
+updateSun();
+
+/* ---------- Wskazywanie myszą ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let down = null;
+function pick(e) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const vis = pickables.filter(m => m.parent && m.parent.visible !== false && isVisible(m));
+  const hit = ray.intersectObjects(vis, false)[0];
+  return hit ? hit.object.userData.bld : null;
+}
+function isVisible(o) { while (o) { if (!o.visible) return false; o = o.parent; } return true; }
+renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+  const b = pick(e); if (b) select(b, false); else if (selected) select(null);
+});
+let lastMove = 0;
+renderer.domElement.addEventListener('pointermove', e => {
+  if (e.buttons || performance.now() - lastMove < 60 || !modelReady) return;
+  lastMove = performance.now();
+  const b = pick(e);
+  if (b !== hovered) {
+    if (hovered && hovered !== selected) tint(hovered, null);
+    hovered = b;
+    if (b && b !== selected) tint(b, 'hov');
+    renderer.domElement.style.cursor = b ? 'pointer' : '';
+  }
+});
+
+/* ---------- Pętla ---------- */
+const needle = document.getElementById('needle');
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(view); resize();
+const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+renderer.setAnimationLoop(now => {
+  if (anim) {
+    const t = Math.min(1, (now - anim.s) / anim.d), k = ease(t);
+    camera.position.lerpVectors(anim.p0, anim.p1, k);
+    controls.target.lerpVectors(anim.t0, anim.t1, k);
+    if (t >= 1) anim = null;
+  }
+  controls.update();
+  const az = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
+  needle.style.transform = `rotate(${az}rad)`;
+  renderer.render(scene, camera);
+  updateLabels();
+});
+applyTheme();
+</script>
+</body>
+</html>
