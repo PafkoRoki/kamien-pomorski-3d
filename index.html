@@ -1639,7 +1639,6 @@ Promise.all([load('models/concept.glb', 'concept'), load('models/context.glb', '
   buildHedges();
   buildConnectors();
   buildNewRoads();
-  buildSiteLine();
   buildTrees(trees);
   scene.updateMatrixWorld(true);
   fixEye();
@@ -1958,15 +1957,6 @@ $('shot-copy').addEventListener('click', async () => {
 
 /* ---------- Granica terenu inwestycji: linia przerywana o stałej grubości + znaczniki punktów załamania ---------- */
 const siteLineMats = [];
-function buildSiteLine() {
-  // znaczniki punktów granicznych (P1–P37): słupki 2,4 m (granica jako cienka linia z modelu koncepcji)
-  const post = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.3, 2.4, 10).translate(0, 1.2, 0),
-    new THREE.MeshStandardMaterial({ color: 0xe0242a, roughness: .6 }), N_RING - 1);
-  const m4 = new THREE.Matrix4();
-  for (let i = 0; i < N_RING - 1; i++) { const [x, y] = SITE_RING[i]; m4.makeTranslation(x, groundSmart(x, y), -y); post.setMatrixAt(i, m4); }
-  post.instanceMatrix.needsUpdate = true; post.computeBoundingSphere(); post.castShadow = true;
-  scene.add(post); addToLayer('l-csite', post);
-}
 
 /* ---------- Pasek stanu: współrzędne terenu pod kursorem (PL-2000/5, EVRF2007) ---------- */
 const sbCoord = document.getElementById('sb-coord'), sbHint = document.getElementById('hint');
