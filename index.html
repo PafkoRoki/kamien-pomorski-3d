@@ -119,11 +119,12 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 10px 0 4px
 .pal b { font-weight: 600; font-size: 13px; }
 .pal small { color: var(--muted); font-size: 11.5px; line-height: 1.3; }
 .pal .chips { display: flex; height: 10px; }
+.pal:last-child:nth-child(odd) { grid-column: span 2; }
 .pal .chips i { flex: 1; }
 #pal-legend { margin-top: 10px; }
 .compass { right: max(14px, env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; }
 .compass svg { width: 46px; height: 46px; transition: none; }
-.card { right: max(14px, env(safe-area-inset-right, 0px)); top: 14px; width: 250px; max-width: calc(100% - 28px); padding: 14px 16px 12px; }
+.card { right: max(14px, env(safe-area-inset-right, 0px)); top: 58px; width: 250px; max-width: calc(100% - 28px); padding: 14px 16px 12px; }
 .card h3 { font: 650 22px/1 var(--f-display); font-stretch: 78%; margin: 2px 0 10px; }
 .card dl { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; font-size: 13px; }
 .card dt { color: var(--muted); }
@@ -135,6 +136,21 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 10px 0 4px
 .loading { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
 .loading div { background: var(--hud); border: 1px solid var(--line); padding: 12px 16px; font: 12px var(--f-mono); color: var(--muted); }
 .hint { left: 14px; top: 14px; padding: 6px 10px; font-size: 12px; color: var(--muted); }
+/* Tryb zrzutu do wizualizacji AI */
+.shot-open { right: max(14px, env(safe-area-inset-right, 0px)); top: 14px; font: 600 12px var(--f-body); color: var(--fg); padding: 8px 12px; cursor: pointer; }
+.shot-open:hover { color: var(--accent); border-color: var(--accent); }
+body.shot .panel, body.shot .hint, body.shot .cams, body.shot .compass, body.shot .card, body.shot #labels, body.shot .shot-open { display: none !important; }
+body.shot .app { grid-template-columns: 1fr; }
+.frame { position: absolute; pointer-events: none; box-shadow: 0 0 0 9999px rgba(10, 14, 18, .5); outline: 1px solid rgba(255, 255, 255, .75); }
+.shotbar { left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: center; padding: 10px 12px; width: max-content; max-width: calc(100% - 28px); }
+.shotbar .grp { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.shotbar .lab { font: 500 10.5px var(--f-mono); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.shotbar .seg button { padding: 5px 8px; }
+.shotbar select { font: 12px var(--f-body); padding: 4px 6px; background: var(--panel); color: var(--fg); border: 1px solid var(--line); }
+.btn { font: 600 12px var(--f-body); border: 1px solid var(--line); background: var(--panel); color: var(--fg); padding: 6px 11px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+.toast { left: 50%; top: 16px; transform: translateX(-50%); padding: 8px 14px; font-size: 13px; max-width: calc(100% - 28px); }
 
 @media (max-width: 760px) {
   .app { grid-template-columns: 1fr; grid-template-rows: 58vh auto; height: auto; }
@@ -237,6 +253,45 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 10px 0 4px
       <p class="note" id="card-note"></p>
     </div>
     <div id="labels"></div>
+    <button type="button" class="hud shot-open" id="shot-open">Tryb zrzutu do wizualizacji</button>
+    <div class="frame" id="frame" hidden></div>
+    <div class="hud shotbar" id="shotbar" hidden>
+      <div class="grp"><span class="lab">Kadr</span>
+        <div class="seg" id="shot-ar" role="group" aria-label="Proporcje kadru">
+          <button type="button" data-ar="0" aria-pressed="true">Cały ekran</button>
+          <button type="button" data-ar="1.7778" aria-pressed="false">16:9</button>
+          <button type="button" data-ar="1.5" aria-pressed="false">3:2</button>
+          <button type="button" data-ar="1.3333" aria-pressed="false">4:3</button>
+          <button type="button" data-ar="1" aria-pressed="false">1:1</button>
+          <button type="button" data-ar="0.5625" aria-pressed="false">9:16</button>
+        </div>
+      </div>
+      <div class="grp"><span class="lab">Styl</span>
+        <div class="seg" id="shot-pal" role="group" aria-label="Styl modelu">
+          <button type="button" data-p="naturalna" aria-pressed="true">Naturalny</button>
+          <button type="button" data-p="makieta" aria-pressed="false">Makieta</button>
+          <button type="button" data-p="akcent" aria-pressed="false">Akcent</button>
+        </div>
+      </div>
+      <div class="grp"><span class="lab">Światło</span>
+        <div class="seg" id="shot-light" role="group" aria-label="Światło">
+          <button type="button" data-l="rano" aria-pressed="false">Rano</button>
+          <button type="button" data-l="poludnie" aria-pressed="false">Południe</button>
+          <button type="button" data-l="zlota" aria-pressed="false">Złota godzina</button>
+          <button type="button" data-l="pochmurno" aria-pressed="false">Pochmurno</button>
+        </div>
+      </div>
+      <div class="grp"><label class="lab" for="shot-res">Szer. px</label>
+        <select id="shot-res"><option value="1920">1920</option><option value="2560" selected>2560</option><option value="3840">3840</option></select>
+      </div>
+      <div class="grp">
+        <button type="button" class="btn primary" id="shot-copy">Kopiuj obraz</button>
+        <button type="button" class="btn" id="shot-save">Zapisz PNG</button>
+        <button type="button" class="btn" id="shot-prompt">Kopiuj prompt</button>
+        <button type="button" class="btn" id="shot-close">Zamknij (Esc)</button>
+      </div>
+    </div>
+    <div class="hud toast" id="toast" role="status" hidden></div>
     <div class="loading" id="loading"><div id="loadmsg">Wczytywanie modelu…</div></div>
   </main>
 </div>
@@ -347,7 +402,25 @@ function placeSun() {
 sun.target.position.copy(CENTER);
 scene.add(sun, sun.target);
 
+// stan trybu zrzutu (zdefiniowany wcześnie - używają go applyTheme i updateSun)
+const shot = { on: false, ar: 0, light: null, overcast: false, prevPal: null, prevLayers: {} };
+const SKIES = {
+  rano: ['#a7c6e3', '#f2ede3'], poludnie: ['#86b2dc', '#e5edf2'], zlota: ['#7a93bd', '#f5d3a1'], pochmurno: ['#bfc6cc', '#e3e5e6'],
+};
+function skyTexture([top, hor]) {
+  const c = document.createElement('canvas'); c.width = 4; c.height = 256;
+  const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, top); gr.addColorStop(0.72, hor); gr.addColorStop(1, hor);
+  g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
 function applyTheme() {
+  if (shot.on) {
+    const sk = SKIES[shot.light || 'poludnie'];
+    scene.background = skyTexture(sk);
+    scene.fog = new THREE.Fog(new THREE.Color(sk[1]), 600, 1700);
+    return;
+  }
   const sky = new THREE.Color(css('--sky'));
   scene.background = sky;
   scene.fog = new THREE.Fog(sky, 700, 1700);
@@ -431,6 +504,17 @@ const PALETTES = {
     edge: '#7a5a3c', edgeOp: .55, sel: 0x1d5c8f,
     legend: [['Budynki projektowane', '#dcb68c'], ['Zagospodarowanie', '#f6f2ea'], ['Otoczenie', '#f3f1ed']],
   },
+  naturalna: {
+    name: 'Naturalna', desc: 'Realistyczne kolory, bez konturów – pod wizualizacje AI',
+    chips: ['#efebe4', '#6b6f74', '#55585c', '#d8d0bf', '#6f9f4f', '#7fa6c4'],
+    ctx: null,
+    concept: { ...LAND, FACADE: '#efebe4', SLAB_BANDS: '#d2cbbf', PLINTH: '#8c857b', ROOF: '#6b6f74', PARAPET: '#dcd6cc', PODIUM: '#a49d92',
+      ASPHALT: '#55585c', PARKING_PAVERS: '#9a9a96', MARKING_WHITE: '#f2f2ee', CURB: '#d6d4cf', TERRACE: '#a9825c', PATH_PAVERS: '#d8d0bf',
+      PLAYGROUND: '#c9714a', PLAY_SAND: '#e3cf98', PLAY_MOUND_GRASS: '#6f9f4f', LAWN: '#6f9f4f', GROUND: '#7fa45a', EXISTING_MEADOW: '#93a865',
+      TREE_CROWN_SITE: '#4f7f3e', TREE_CROWN: '#567f43', TREE_TRUNK: '#5e4a3a', DOOR: '#2b2d30' },
+    edge: '#000000', edgeOp: 0, sel: 0x1d5c8f,
+    legend: [['Naturalne kolory koncepcji i otoczenia, bez konturów – dobry podkład do wizualizacji AI', '#6f9f4f']],
+  },
   oryginal: {
     name: 'Oryginał', desc: 'Materiały z modelu w Blenderze',
     chips: ['#f0ebe1', '#d6d6d9', '#3d3d3f', '#7aa060', '#6ba0c8', '#a3c18b'],
@@ -473,12 +557,13 @@ function applyPalette() {
       else om.color.copy(om.userData.c0);
       o.material = om; continue;
     }
+    if (o.userData.concept) { const col = p.concept?.[mk]; o.material = col ? colorMat(om, col) : om; continue; }
     if (!p.ctx) { o.material = om; continue; }
-    if (o.userData.concept) { const col = p.concept[mk]; o.material = col ? colorMat(om, col) : om; continue; }
     o.material = mutedMat(om, k === 'water' ? p.water : k === 'tree' ? p.tree : p.ctx);
   }
   for (const o of allMeshes) { if (o.userData.clip) clipSite(o.material); if (o.userData.hole) clipHoles(o.material); }
-  for (const l of edgeLines) { l.material.color.set(p.edge); l.material.opacity = p.edgeOp; }
+  for (const l of edgeLines) { l.material.color.set(p.edge); l.material.opacity = p.edgeOp; l.visible = p.edgeOp > 0; }
+  document.querySelectorAll('#shot-pal button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.p === palKey)));
   if (selected) tint(selected, 'sel');
   document.querySelectorAll('.pal').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.p === palKey)));
   document.getElementById('pal-legend').innerHTML = p.legend.map(([t, c]) =>
@@ -1083,11 +1168,13 @@ function updateSun() {
   sun.intensity = 2.8 * up;
   sun.color.setHSL(0.09, 0.35 + 0.4 * (1 - up), 0.85 + 0.1 * up);
   hemi.intensity = 0.45 + 0.75 * THREE.MathUtils.clamp((el + 6) / 20, 0, 1);
+  // pochmurno: miękkie, rozproszone światło bez ostrych cieni (dobre pod wizualizacje AI)
+  if (shot.on && shot.overcast) { sun.intensity *= 0.18; sun.color.set(0xffffff); hemi.intensity = 1.75; }
 }
 timeEl.addEventListener('input', updateSun);
-document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+document.querySelectorAll('.seg button[data-d]').forEach(b => b.addEventListener('click', () => {
   day = b.dataset.d.split('-').map(Number);
-  document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  document.querySelectorAll('.seg button[data-d]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   updateSun();
 }));
 updateSun();
@@ -1122,11 +1209,128 @@ renderer.domElement.addEventListener('pointermove', e => {
   }
 });
 
+/* ---------- Tryb zrzutu do wizualizacji AI ---------- */
+const $ = id => document.getElementById(id);
+const frameEl = $('frame'), shotbar = $('shotbar'), toastEl = $('toast');
+let toastT = 0;
+function toast(msg) { toastEl.textContent = msg; toastEl.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { toastEl.hidden = true; }, 3200); }
+function setLayer(id, on) {
+  const l = LAYERS.find(x => x.id === id); if (!l) return;
+  l.on = on; const cb = $(id); if (cb) cb.checked = on;
+  for (const o of layerNodes.get(id)) o.visible = on;
+}
+// prostokąt kadru w pikselach widoku (zostawia miejsce na pasek narzędzi)
+function frameRect() {
+  const W = view.clientWidth, H = view.clientHeight;
+  if (!shot.on || !shot.ar) return { x: 0, y: 0, w: W, h: H };
+  const m = 20, barH = shotbar.offsetHeight + 28, availH = H - barH - m;
+  let w = W - 2 * m, h = w / shot.ar;
+  if (h > availH - m) { h = availH - m; w = h * shot.ar; }
+  return { x: (W - w) / 2, y: Math.max(m, (availH - h) / 2 + m / 2), w, h };
+}
+function updateFrame() {
+  frameEl.hidden = !(shot.on && shot.ar);
+  if (frameEl.hidden) return;
+  const f = frameRect();
+  Object.assign(frameEl.style, { left: f.x + 'px', top: f.y + 'px', width: f.w + 'px', height: f.h + 'px' });
+}
+const LIGHTS = {
+  rano: { d: [6, 21], t: 7.5, label: 'poranek, niskie ciepłe słońce' },
+  poludnie: { d: [6, 21], t: 13, label: 'południe, pełne słońce' },
+  zlota: { d: [6, 21], t: 19.75, label: 'złota godzina, ciepłe niskie światło, długie cienie' },
+  pochmurno: { d: [6, 21], t: 13, overcast: true, label: 'pochmurny dzień, miękkie rozproszone światło' },
+};
+function setLight(k) {
+  const L = LIGHTS[k]; shot.light = k; shot.overcast = !!L.overcast;
+  day = L.d; timeEl.value = L.t;
+  document.querySelectorAll('.seg button[data-d]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.d === L.d.join('-'))));
+  document.querySelectorAll('#shot-light button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.l === k)));
+  updateSun(); applyTheme();
+}
+function enterShot() {
+  if (!modelReady) { toast('Poczekaj, aż model się wczyta.'); return; }
+  shot.on = true; shot.prevPal = palKey;
+  shot.prevLayers = { 'l-csite': LAYERS.find(l => l.id === 'l-csite').on, 'l-cgrid': LAYERS.find(l => l.id === 'l-cgrid').on, 'l-cgar': LAYERS.find(l => l.id === 'l-cgar').on };
+  setLayer('l-csite', false); setLayer('l-cgrid', false); setLayer('l-cgar', false);   // czerwona granica i siatki mylą AI
+  select(null);
+  palKey = 'naturalna'; applyPalette();
+  document.body.classList.add('shot'); shotbar.hidden = false;
+  setLight(shot.light || 'poludnie');
+  requestAnimationFrame(() => { resize(); updateFrame(); });
+}
+function exitShot() {
+  shot.on = false; shot.overcast = false;
+  for (const [id, on] of Object.entries(shot.prevLayers)) setLayer(id, on);
+  palKey = shot.prevPal || 'akcent'; applyPalette();
+  document.body.classList.remove('shot'); shotbar.hidden = true; frameEl.hidden = true;
+  updateSun(); applyTheme();
+  requestAnimationFrame(resize);
+}
+// render kadru w zadanej rozdzielczości (ten sam widok co w ramce)
+function capture() {
+  const longSide = +$('shot-res').value;
+  const W = view.clientWidth, H = view.clientHeight, f = frameRect();
+  const s = longSide / Math.max(f.w, f.h), ow = Math.round(f.w * s), oh = Math.round(f.h * s);
+  const pr = renderer.getPixelRatio();
+  renderer.setPixelRatio(1); renderer.setSize(ow, oh, false);
+  camera.aspect = W / H; camera.setViewOffset(W * s, H * s, f.x * s, f.y * s, ow, oh); camera.updateProjectionMatrix();
+  placeSun(); renderer.render(scene, camera);
+  const url = renderer.domElement.toDataURL('image/png');
+  camera.clearViewOffset(); renderer.setPixelRatio(pr); resize();
+  return { url, ow, oh };
+}
+const fileName = (ow, oh) => `kamien-pomorski_${shot.light || 'widok'}_${ow}x${oh}.png`;
+$('shot-open').addEventListener('click', enterShot);
+$('shot-close').addEventListener('click', exitShot);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && shot.on) exitShot(); });
+document.querySelectorAll('#shot-ar button').forEach(b => b.addEventListener('click', () => {
+  shot.ar = +b.dataset.ar;
+  document.querySelectorAll('#shot-ar button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  updateFrame();
+}));
+document.querySelectorAll('#shot-pal button').forEach(b => b.addEventListener('click', () => { palKey = b.dataset.p; applyPalette(); }));
+document.querySelectorAll('#shot-light button').forEach(b => b.addEventListener('click', () => setLight(b.dataset.l)));
+$('shot-save').addEventListener('click', () => {
+  const { url, ow, oh } = capture();
+  const a = document.createElement('a'); a.href = url; a.download = fileName(ow, oh);
+  document.body.append(a); a.click(); a.remove();
+  toast(`Zapisano ${fileName(ow, oh)}`);
+});
+$('shot-copy').addEventListener('click', async () => {
+  const { url, ow, oh } = capture();
+  try {
+    if (!window.ClipboardItem || !navigator.clipboard?.write) throw new Error('brak obsługi');
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': fetch(url).then(r => r.blob()) })]);
+    toast(`Skopiowano obraz ${ow}×${oh} – wklej go w ChatGPT (Ctrl+V)`);
+  } catch (e) {
+    toast('Ta przeglądarka nie pozwala skopiować obrazu – użyj „Zapisz PNG”.');
+  }
+});
+function promptText() {
+  const eye = camera.position.y - controls.target.y < 25;
+  const L = LIGHTS[shot.light || 'poludnie'];
+  return [
+    'Przekształć załączony zrzut z modelu 3D w fotorealistyczną wizualizację architektoniczną.',
+    'Zachowaj dokładnie: kadr, perspektywę kamery, położenie i bryły budynków, liczbę kondygnacji, przebieg dróg, chodników, parkingów i zieleni. Nie dodawaj ani nie usuwaj budynków.',
+    'Miejsce: Kamień Pomorski (Pomorze Zachodnie, Polska), nowe osiedle mieszkaniowe przy Zalewie Kamieńskim, nadmorski klimat.',
+    'Koncepcja: budynki mieszkalne 4–5 kondygnacji z płaskimi dachami i attyką; budynki A1–A4 i B stoją na postumencie 1,5 m nad terenem (garaż podziemny, rampy zjazdowe). Jasne elewacje – materiały dobierz realistycznie i spójnie. Jezdnia asfaltowa, chodniki i parkingi z kostki betonowej, trawniki, młode drzewa liściaste, plac zabaw.',
+    'Otoczenie: istniejąca zabudowa miasta, łąki, drzewa, Zalew z mariną i żaglówkami – realistycznie, ale spokojniej niż nowe osiedle.',
+    `Ujęcie: ${eye ? 'z poziomu pieszego, wysokość oczu' : 'z lotu ptaka'}. Światło: ${L.label}, lato.`,
+    'Styl: fotografia architektoniczna, naturalne kolory, ostre detale, bez tekstu, etykiet i znaków wodnych.',
+  ].join('\n');
+}
+$('shot-prompt').addEventListener('click', async () => {
+  const t = promptText();
+  try { await navigator.clipboard.writeText(t); toast('Skopiowano prompt – wklej go w ChatGPT razem z obrazem.'); }
+  catch (e) { console.info(t); toast('Nie udało się skopiować – prompt jest w konsoli przeglądarki (F12).'); }
+});
+
 /* ---------- Pętla ---------- */
 const needle = document.getElementById('needle');
 function resize() {
   const w = view.clientWidth, h = view.clientHeight;
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  if (shot.on) updateFrame();
 }
 new ResizeObserver(resize).observe(view); resize();
 const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
