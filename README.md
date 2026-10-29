@@ -6,7 +6,7 @@ Interaktywna przeglądarka 3D koncepcji zagospodarowania działek 100/15, 100/16
 - karty budynków (kondygnacje, pow. zabudowy, PUC, rzędne)
 - palety kolorów wyróżniające koncepcję na tle otoczenia: Akcent, Typy budynków, Makieta, Oryginał
 - budynki typu A (A1–A4, B) na postumencie 1,5 m z garażem podziemnym i rampą zjazdową
-- łącznice dróg koncepcji z ul. Lipową, Kanałową i Księcia Kazimierza I
+- łącznice dróg koncepcji z ul. Lipową i Kanałową
 - drzewa otoczenia (`models/trees.json`), łodzie i żaglówki na Zalewie, krowy na łąkach
 - bilans terenu, warstwy
 - symulacja nasłonecznienia dla 21.03, 21.06, 21.12
