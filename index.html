@@ -846,25 +846,7 @@ const CONNECTORS = [
   { name: 'zjazd_poludniowy → Lipowa', w: 6, pts: [[104.68, -113.01], [108.16, -111.03], [111.94, -108.9]] },
   { name: 'wjazd_100-16 → Kanałowa', w: 6, pts: [[20.52, -107.54], [17.04, -109.52], [13.38, -110.07]] },
   { name: 'dojazd_parking_A4 → Lipowa', w: 5, pts: [[4.95, 28.7], [8.43, 30.68], [27.09, 41.28]] },
-  // pętla: ulica wewnętrzna przedłużona od dojazdu przy A4 wzdłuż zewnętrznej elewacji C (oś 4,5 m od fasady),
-  // za zachodnim końcem C skręca na południe i wpina się w połączenie północne – zamknięta pętla wokół C
-  { name: 'pętla wokół budynku C', w: 5, loop: true, pts: [[4.95,28.7],[8.43,30.68],[11.2,35.5],[11.13,40.5],[-1.72,62.9],[-5.37,67.45],[-7.98,69.91],[-10.47,71.82],[-16.02,74.96],[-18.86,76.08],[-22.4,77.09],[-26.33,77.73],[-43.95,79.49],[-45.7,79.32],[-47.24,78.49],[-47.87,77.87],[-48.36,77.13],[-48.87,75.45],[-50.23,61.77],[-50.73,55.77],[-50.53,51.0],[-49.03,46.5],[-46.0,42.9]] },
 ];
-// drzewa koncepcji stojące na trasie nowej pętli – usuwane z modelu
-function removeTreesOnRoads(concept) {
-  const roads = CONNECTORS.filter(c => c.loop);
-  const dSeg = (x, y, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy); };
-  const v = new THREE.Vector3(); let n = 0;
-  for (const node of [...concept.children]) {
-    if (!/^C3D_TREE/.test(node.name)) continue;
-    node.getWorldPosition(v); const x = v.x, y = -v.z;
-    if (!roads.some(r => r.pts.some((p, i) => i && dSeg(x, y, r.pts[i - 1], p) < r.w / 2 + 1.5))) continue;
-    node.parent.remove(node);
-    for (const list of layerNodes.values()) { const k = list.indexOf(node); if (k >= 0) list.splice(k, 1); }
-    n++;
-  }
-  return n;
-}
 
 function inSite(x, y) {
   let ins = false;
@@ -1314,7 +1296,6 @@ Promise.all([load('models/concept.glb', 'concept'), load('models/context.glb', '
   fixRoofC(concept);
   buildPodiums(concept);
   buildWindows();
-  removeTreesOnRoads(concept);
   buildConnectors();
   buildTrees(trees);
   scene.updateMatrixWorld(true);
