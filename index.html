@@ -134,12 +134,34 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 10px 0 4px
 .lbl { position: absolute; left: 0; top: 0; pointer-events: none; font: 600 12px var(--f-mono); color: var(--fg); background: var(--hud); border: 1px solid var(--line); padding: 1px 6px; transform: translate(-50%, -100%); white-space: nowrap; will-change: transform; }
 .lbl.sel { background: var(--accent); color: var(--panel); border-color: var(--accent); }
 .loading { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
-.loading div { background: var(--hud); border: 1px solid var(--line); padding: 12px 16px; font: 12px var(--f-mono); color: var(--muted); }
-.hint { left: 14px; top: 14px; padding: 6px 10px; font-size: 12px; color: var(--muted); }
+.loading .box { background: var(--hud); border: 1px solid var(--line); padding: 12px 16px 14px; font: 12px var(--f-mono); color: var(--muted); width: min(280px, calc(100% - 40px)); display: grid; gap: 9px; }
+.loading .track { height: 4px; background: var(--line); overflow: hidden; }
+.loading .fill { height: 100%; width: 0; background: var(--accent); transition: width .2s ease-out; }
+/* HUD: grupy przycisków w rogach widoku */
+.hudtl, .hudtr { position: absolute; top: 14px; display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; z-index: 2; }
+.hudtl { left: 14px; max-width: calc(100% - 300px); }
+.hudtr { right: max(14px, env(safe-area-inset-right, 0px)); justify-content: flex-end; }
+.hudtl > .hud, .hudtr > .hud { position: static; }
+.hint { padding: 7px 10px; font-size: 12px; color: var(--muted); }
+.hbtn { font: 600 12px var(--f-body); color: var(--fg); padding: 7px 12px; cursor: pointer; min-height: 32px; }
+.hbtn:hover { color: var(--accent); border-color: var(--accent); }
+.status { left: 50%; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); padding: 6px 12px; font: 12px var(--f-mono); color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1s ease-in-out infinite alternate; }
+@keyframes pulse { from { opacity: .3; } to { opacity: 1; } }
+/* zwijane sekcje panelu */
+.sec > summary { list-style: none; cursor: pointer; border-radius: 2px; }
+.sec > summary::-webkit-details-marker { display: none; }
+.sec > summary h2 { margin-bottom: 0; }
+.sec > summary h2::after { content: ""; width: 7px; height: 7px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: rotate(45deg); margin: 0 3px 3px 6px; transition: transform .15s ease-out; flex: none; align-self: center; }
+.sec:not([open]) > summary h2::after { transform: rotate(-45deg); margin-bottom: 0; }
+.sec > summary:hover h2 { color: var(--accent); }
+.sec > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.sec[open] > summary { margin-bottom: 10px; }
+/* panel ukryty – pełny ekran modelu */
+body.nopanel .panel { display: none; }
+body.nopanel .app { grid-template-columns: 1fr; }
 /* Tryb zrzutu do wizualizacji AI */
-.shot-open { right: max(14px, env(safe-area-inset-right, 0px)); top: 14px; font: 600 12px var(--f-body); color: var(--fg); padding: 8px 12px; cursor: pointer; }
-.shot-open:hover { color: var(--accent); border-color: var(--accent); }
-body.shot .panel, body.shot .hint, body.shot .cams, body.shot .compass, body.shot .card, body.shot #labels, body.shot .shot-open { display: none !important; }
+body.shot .panel, body.shot .hudtl, body.shot .hudtr, body.shot .cams, body.shot .compass, body.shot .card, body.shot #labels, body.shot .status { display: none !important; }
 body.shot .app { grid-template-columns: 1fr; }
 .frame { position: absolute; pointer-events: none; box-shadow: 0 0 0 9999px rgba(10, 14, 18, .5); outline: 1px solid rgba(255, 255, 255, .75); }
 .shotbar { left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: center; padding: 10px 12px; width: max-content; max-width: calc(100% - 28px); }
@@ -158,59 +180,69 @@ body.shot .app { grid-template-columns: 1fr; }
   .view { order: -1; height: 58vh; }
   .panel { border-right: 0; border-top: 1px solid var(--line); overflow: visible; padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); }
   .card { top: auto; bottom: 64px; width: auto; left: 14px; }
-  .hint { display: none; }
+  .hint, #panel-toggle { display: none; }
+  .hudtl { max-width: none; }
   .cams button { padding: 7px 9px; }
 }
-@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+/* ekrany dotykowe: cele dotyku min. 44 px, odstępy ≥ 8 px */
+@media (pointer: coarse) {
+  .seg button, .cams button, .btn, .hbtn, .shotbar select, .modes button { min-height: 44px; }
+  .layers label { min-height: 44px; }
+  .layers input { width: 20px; height: 20px; }
+  tbody td { padding-block: 11px; }
+  .sec > summary { padding-block: 8px; }
+  .card .x { width: 44px; height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } .status::before { animation: none; } .loading .fill, .sec > summary h2::after { transition: none; } }
 </style>
 </head>
 <body>
 <div class="app">
-  <aside class="panel" aria-label="Opis koncepcji">
+  <aside class="panel" id="panel" aria-label="Opis koncepcji">
     <header>
       <div class="eyebrow">Koncepcja zagospodarowania · model 3D</div>
       <h1>Kamień Pomorski, dz. 100/15</h1>
       <p class="sub">Działki <b>100/15, 100/16, 100/19</b>, obręb 0003 Kamień Pomorski. Teren inwestycji <b class="num">18 933 m²</b>, kontekst w promieniu 500 m.</p>
     </header>
 
-    <section aria-labelledby="h-pal">
-      <h2 id="h-pal">Paleta kolorów <span>koncepcja / otoczenie</span></h2>
+    <details class="sec" id="sec-pal" open>
+      <summary><h2 id="h-pal">Paleta kolorów <span>koncepcja / otoczenie</span></h2></summary>
       <div class="pals" id="pals" role="group" aria-label="Paleta kolorów"></div>
       <ul class="legend" id="pal-legend"></ul>
-    </section>
+    </details>
 
-    <section aria-labelledby="h-bil">
-      <h2 id="h-bil">Bilans koncepcji</h2>
+    <details class="sec" id="sec-bil" open>
+      <summary><h2 id="h-bil">Bilans koncepcji</h2></summary>
       <div class="kpis">
         <div class="kpi"><span class="v">2 508,7<small>m²</small></span><span class="k">pow. zabudowy · 13,3%</span></div>
         <div class="kpi"><span class="v">11 170<small>m²</small></span><span class="k">pow. całkowita (PUC)</span></div>
         <div class="kpi"><span class="v">0,59</span><span class="k">intensywność zabudowy</span></div>
         <div class="kpi"><span class="v">97</span><span class="k">miejsc postojowych</span></div>
       </div>
-    </section>
+    </details>
 
-    <section aria-labelledby="h-zag">
-      <h2 id="h-zag">Zagospodarowanie terenu <span>m² · %</span></h2>
+    <details class="sec" id="sec-zag" open>
+      <summary><h2 id="h-zag">Zagospodarowanie terenu <span>m² · %</span></h2></summary>
       <div class="bar" id="bar" role="img" aria-label="Udział form zagospodarowania w powierzchni terenu"></div>
       <ul class="legend" id="legend"></ul>
-    </section>
+    </details>
 
-    <section aria-labelledby="h-bud">
-      <h2 id="h-bud">Budynki <span>kliknij, by pokazać</span></h2>
+    <details class="sec" id="sec-bud" open>
+      <summary><h2 id="h-bud">Budynki <span>kliknij, by pokazać</span></h2></summary>
       <table>
         <thead><tr><th>Bud.</th><th>Kond.</th><th>Zabud. m²</th><th>PUC m²</th></tr></thead>
         <tbody id="btab"></tbody>
         <tfoot><tr><td>Razem</td><td></td><td>2 508,7</td><td>11 170,2</td></tr></tfoot>
       </table>
-    </section>
+    </details>
 
-    <section aria-labelledby="h-war">
-      <h2 id="h-war">Warstwy</h2>
+    <details class="sec" id="sec-war" open>
+      <summary><h2 id="h-war">Warstwy</h2></summary>
       <div class="layers" id="layers"></div>
-    </section>
+    </details>
 
-    <section aria-labelledby="h-sun">
-      <h2 id="h-sun">Nasłonecznienie</h2>
+    <details class="sec" id="sec-sun" open>
+      <summary><h2 id="h-sun">Nasłonecznienie</h2></summary>
       <div class="sunrow">
         <div class="seg" role="group" aria-label="Data">
           <button type="button" id="d-0321" data-d="3-21" aria-pressed="true">21.03</button>
@@ -221,7 +253,7 @@ body.shot .app { grid-template-columns: 1fr; }
       </div>
       <input type="range" id="time" min="5" max="21" step="0.25" value="12" aria-label="Godzina">
       <div class="sunread"><span>azymut <b id="az">–</b></span><span>wysokość <b id="el">–</b></span></div>
-    </section>
+    </details>
 
     <footer class="src">
       <p>Układ PL-2000 strefa 5 (EPSG:2176), wysokości PL-EVRF2007-NH. Punkt 0,0 modelu: E 5 485 377, N 5 982 456.</p>
@@ -230,7 +262,11 @@ body.shot .app { grid-template-columns: 1fr; }
   </aside>
 
   <main class="view" id="view">
-    <div class="hud hint">Obrót: lewy przycisk · przesuw: prawy · zoom: kółko</div>
+    <div class="hudtl">
+      <button type="button" class="hud hbtn" id="panel-toggle" aria-controls="panel" aria-expanded="true">Ukryj panel</button>
+      <div class="hud hint" id="hint">Obrót: lewy przycisk · przesuw: prawy · zoom: kółko</div>
+    </div>
+    <div class="hud status" id="status" role="status" hidden></div>
     <div class="hud cams" role="group" aria-label="Widoki">
       <button type="button" id="c-aerial" data-cam="aerial" aria-pressed="true">Lotniczy</button>
       <button type="button" id="c-plan" data-cam="plan" aria-pressed="false">Plan</button>
@@ -251,7 +287,10 @@ body.shot .app { grid-template-columns: 1fr; }
       <p class="note" id="card-note"></p>
     </div>
     <div id="labels"></div>
-    <button type="button" class="hud shot-open" id="shot-open">Tryb zrzutu do wizualizacji</button>
+    <div class="hudtr">
+      <button type="button" class="hud hbtn" id="share">Kopiuj link do widoku</button>
+      <button type="button" class="hud hbtn shot-open" id="shot-open">Tryb zrzutu do wizualizacji</button>
+    </div>
     <div class="frame" id="frame" hidden></div>
     <div class="hud shotbar" id="shotbar" hidden>
       <div class="grp"><span class="lab">Kadr</span>
@@ -309,7 +348,9 @@ body.shot .app { grid-template-columns: 1fr; }
       </div>
     </div>
     <div class="hud toast" id="toast" role="status" hidden></div>
-    <div class="loading" id="loading"><div id="loadmsg">Wczytywanie modelu…</div></div>
+    <div class="loading" id="loading" role="status" aria-live="polite">
+      <div class="box"><span id="loadmsg">Wczytywanie modelu…</span><div class="track"><div class="fill" id="loadfill"></div></div></div>
+    </div>
   </main>
 </div>
 
@@ -390,7 +431,8 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 view.prepend(renderer.domElement);
 renderer.domElement.tabIndex = 0;
-renderer.domElement.setAttribute('aria-label', 'Model 3D koncepcji');
+renderer.domElement.setAttribute('role', 'img');
+renderer.domElement.setAttribute('aria-label', 'Interaktywny model 3D koncepcji zabudowy w Kamieniu Pomorskim. Przeciągnij, aby obrócić, kółkiem przybliż. Klawisze 1–4 przełączają widoki, Z otwiera tryb zrzutu. Dane budynków są w tabeli w panelu.');
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 6000);
@@ -748,7 +790,12 @@ loader.setMeshoptDecoder(MeshoptDecoder);
 const loadmsg = document.getElementById('loadmsg');
 const prog = { concept: 0, context: 0 };
 const TOTAL = 1345716 + 8083324;
-const showProg = () => { loadmsg.textContent = `Wczytywanie modelu… ${Math.round((prog.concept + prog.context) / TOTAL * 100)}%`; };
+const loadfill = document.getElementById('loadfill');
+view.setAttribute('aria-busy', 'true');
+const showProg = () => {
+  const pct = Math.min(100, Math.round((prog.concept + prog.context) / TOTAL * 100));
+  loadmsg.textContent = `Wczytywanie modelu… ${pct}%`; loadfill.style.width = pct + '%';
+};
 
 function prepare(root, isConcept) {
   for (const top of [...root.children]) {
@@ -915,6 +962,27 @@ function buildPodiums(concept) {
   holesU.value = HOLES.flat().map(([x, y]) => new THREE.Vector2(x, y));
   // tnij teren / nawierzchnie koncepcji (bez budynków i dodatków)
   for (const o of allMeshes) if (o.userData.concept && !o.userData.extra && /ground|land/.test(o.userData.kind)) o.userData.hole = true;
+}
+
+// Budynek C: eksport z Blendera nie obniżył dachu (krzywoliniowa bryła) – górna płaszczyzna miała
+// materiał attyki. Nadajemy jej materiał dachu jak w A1–A4/B/D i dokładamy obwódkę attyki 35 cm.
+const C_OUT = [[-26.96,73.28],[-26.82,73.26],[-25.93,73.16],[-25.66,73.12],[-24.78,72.98],[-24.51,72.93],[-23.64,72.75],[-23.37,72.69],[-22.5,72.48],[-22.23,72.41],[-21.37,72.17],[-21.11,72.09],[-20.26,71.81],[-20.0,71.72],[-19.17,71.4],[-18.91,71.3],[-18.09,70.96],[-17.84,70.85],[-17.03,70.47],[-16.78,70.35],[-15.99,69.94],[-15.75,69.81],[-14.97,69.36],[-14.73,69.22],[-13.97,68.75],[-13.74,68.6],[-13.0,68.1],[-12.78,67.94],[-12.06,67.41],[-11.84,67.25],[-11.15,66.69],[-10.94,66.51],[-10.26,65.92],[-10.06,65.74],[-9.41,65.13],[-9.21,64.94],[-8.59,64.3],[-8.4,64.1],[-7.8,63.44],[-7.62,63.23],[-7.04,62.54],[-6.87,62.33],[-6.33,61.62],[-6.16,61.4],[-5.65,60.67],[-5.49,60.45],[-5.0,59.7],[-4.86,59.46],[-4.4,58.69],[-4.33,58.58],[7.22,38.27],[-4.73,31.47],[-16.25,51.72],[-16.6,52.31],[-16.94,52.83],[-17.3,53.34],[-17.68,53.83],[-18.08,54.3],[-18.5,54.76],[-18.93,55.21],[-19.38,55.63],[-19.85,56.04],[-20.34,56.43],[-20.84,56.8],[-21.35,57.15],[-21.88,57.48],[-22.42,57.78],[-22.97,58.07],[-23.53,58.33],[-24.11,58.57],[-24.69,58.79],[-25.28,58.98],[-25.88,59.15],[-26.48,59.3],[-27.09,59.42],[-27.7,59.52],[-28.39,59.6],[-45.75,61.33],[-44.39,75.01]];
+const C_IN = [[-27.0,72.93],[-25.72,72.77],[-24.58,72.58],[-23.45,72.35],[-22.33,72.07],[-20.37,71.48],[-19.29,71.08],[-18.23,70.63],[-17.18,70.15],[-16.15,69.63],[-15.14,69.06],[-14.16,68.46],[-12.99,67.66],[-12.06,66.97],[-11.16,66.24],[-10.3,65.48],[-8.84,64.05],[-8.06,63.2],[-7.15,62.11],[-5.93,60.47],[-5.16,59.28],[6.74,38.41],[-4.6,31.95],[-16.3,52.49],[-17.02,53.54],[-17.41,54.05],[-18.24,55.0],[-18.69,55.46],[-19.63,56.31],[-20.63,57.08],[-21.16,57.44],[-22.25,58.09],[-23.39,58.65],[-24.57,59.12],[-25.18,59.32],[-26.4,59.64],[-27.03,59.77],[-28.35,59.95],[-45.37,61.64],[-44.08,74.63]];
+function fixRoofC(concept) {
+  const c = concept.children.find(o => /^C3D_BLD_C_/.test(o.name)); if (!c) return;
+  let tpl = null;
+  for (const o of allMeshes) if (o.userData.kind === 'new' && matKey(origMat.get(o)) === 'ROOF') { tpl = origMat.get(o); break; }
+  if (!tpl) return;
+  c.traverse(o => {
+    if (!o.isMesh || matKey(origMat.get(o)) !== 'PARAPET') return;
+    const m = tpl.clone(); m.userData.c0 = (tpl.userData.c0 || tpl.color).clone();
+    o.material = m; origMat.set(o, m);
+  });
+  // obwódka attyki (pierścień zewnętrzny obrys – obrys wewnętrzny), 8 cm nad płaszczyzną dachu
+  const s = shapeOf(C_OUT); s.holes.push(new THREE.Path(C_IN.map(([x, y]) => new THREE.Vector2(x, y))));
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.1, bevelEnabled: false }); g.rotateX(-Math.PI / 2); g.translate(0, 18.6 + 0.03, 0);
+  const rim = addConceptMesh(g, 'PARAPET', '#cccac2', { own: true, kind: 'new', cast: true });
+  rim.userData.bld = 'C'; pickables.push(rim); bldMeshes.get('C')?.push(rim);
 }
 
 function buildConnectors() {
@@ -1184,15 +1252,21 @@ Promise.all([load('models/concept.glb', 'concept'), load('models/context.glb', '
   for (const o of allMeshes) { const k = matKey(origMat.get(o)); if (o.userData.concept && k && !conceptMats[k]) conceptMats[k] = origMat.get(o); }
   // BVH dla siatek terenu i nawierzchni (raz, przed próbkowaniem)
   for (const o of allMeshes) if (!o.isInstancedMesh && o.geometry.index && /ground|land|water|ctx/.test(o.userData.kind || '') && !o.geometry.boundsTree) { try { o.geometry.computeBoundsTree(); } catch (e) {} }
+  fixRoofC(concept);
   buildPodiums(concept);
   buildConnectors();
   buildTrees(trees);
   scene.updateMatrixWorld(true);
   fixEye();
   applyPalette();
-  buildBoats().then(buildCows).then(() => console.info('dodatki gotowe'));
+  // status kolejnego etapu (łodzie, krowy liczą się w tle) – bez „zamrożonego” wrażenia
+  const st = document.getElementById('status');
+  st.textContent = 'Rozmieszczam łodzie i krowy…'; st.hidden = false;
+  buildBoats().then(buildCows).then(() => { st.hidden = true; console.info('dodatki gotowe'); }).catch(() => { st.hidden = true; });
   window.__kp = { camera, controls, P, scene, look: (x, y, h, tx, ty, th) => { anim = null; camera.position.copy(P(x, y, h)); controls.target.copy(P(tx, ty, th)); controls.update(); } };
   document.getElementById('loading').hidden = true;
+  view.removeAttribute('aria-busy');
+  applyHash();
   applyTheme();
 }).catch(err => {
   console.error(err);
@@ -1383,7 +1457,56 @@ function capture() {
 const fileName = (ow, oh) => `kamien-pomorski_${shot.light || 'widok'}_${ow}x${oh}.png`;
 $('shot-open').addEventListener('click', enterShot);
 $('shot-close').addEventListener('click', exitShot);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && shot.on) exitShot(); });
+// skróty klawiszowe: 1–4 widoki, Z tryb zrzutu, Esc zamyka tryb / odznacza budynek
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if (e.key === 'Escape') { if (shot.on) exitShot(); else if (selected) select(null); return; }
+  if (shot.on) return;
+  const cam = { 1: 'c-aerial', 2: 'c-plan', 3: 'c-north', 4: 'c-eye' }[e.key];
+  if (cam) { $(cam).click(); e.preventDefault(); }
+  else if (e.key === 'z' || e.key === 'Z') { enterShot(); e.preventDefault(); }
+});
+
+/* ---------- Panel: zwijanie, sekcje, podpowiedź ---------- */
+const coarse = matchMedia('(pointer: coarse)').matches;
+$('hint').textContent = coarse ? '1 palec: obrót · 2 palce: zoom i przesuw' : 'Obrót: lewy przycisk · przesuw: prawy · zoom: kółko · skróty: 1–4 widoki, Z zrzut';
+function setPanel(open) {
+  document.body.classList.toggle('nopanel', !open);
+  $('panel-toggle').setAttribute('aria-expanded', String(open));
+  $('panel-toggle').textContent = open ? 'Ukryj panel' : 'Pokaż panel';
+  try { localStorage.setItem('kp3d-panel', open ? '1' : '0'); } catch (e) {}
+}
+$('panel-toggle').addEventListener('click', () => setPanel(document.body.classList.contains('nopanel')));
+try { if (localStorage.getItem('kp3d-panel') === '0' && !matchMedia('(max-width: 760px)').matches) setPanel(false); } catch (e) {}
+document.querySelectorAll('details.sec').forEach(d => {
+  try { const v = localStorage.getItem('kp3d-' + d.id); if (v !== null) d.open = v === '1'; } catch (e) {}
+  d.addEventListener('toggle', () => { try { localStorage.setItem('kp3d-' + d.id, d.open ? '1' : '0'); } catch (e) {} });
+});
+
+/* ---------- Link do widoku (kamera, paleta, data i godzina w adresie) ---------- */
+const r1 = v => Math.round(v * 10) / 10;
+function viewHash() {
+  const c = camera.position, t = controls.target;
+  return '#c=' + [c.x, c.y, c.z, t.x, t.y, t.z].map(r1).join(',') + '&p=' + palKey + '&d=' + day.join('-') + '&t=' + timeEl.value;
+}
+function applyHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const c = (h.get('c') || '').split(',').map(Number);
+  if (c.length === 6 && c.every(isFinite)) { anim = null; camera.position.set(c[0], c[1], c[2]); controls.target.set(c[3], c[4], c[5]); controls.update(); setCamBtn(null); }
+  if (PALETTES[h.get('p')]) { palKey = h.get('p'); applyPalette(); }
+  const d = (h.get('d') || '').split('-').map(Number), t = +h.get('t');
+  if (d.length === 2 && d.every(isFinite) && document.querySelector(`.seg button[data-d="${d.join('-')}"]`)) {
+    day = d; document.querySelectorAll('.seg button[data-d]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.d === d.join('-'))));
+  }
+  if (t >= 5 && t <= 21) timeEl.value = t;
+  updateSun();
+}
+$('share').addEventListener('click', async () => {
+  const url = location.href.split('#')[0] + viewHash();
+  history.replaceState(null, '', url);
+  try { await navigator.clipboard.writeText(url); toast('Skopiowano link do tego widoku – otworzy model z tą samą kamerą, paletą i godziną.'); }
+  catch (e) { toast('Link do widoku jest w pasku adresu – skopiuj go stamtąd.'); }
+});
 document.querySelectorAll('#shot-ar button').forEach(b => b.addEventListener('click', () => {
   shot.ar = +b.dataset.ar;
   document.querySelectorAll('#shot-ar button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
