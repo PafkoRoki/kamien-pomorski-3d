@@ -216,6 +216,11 @@ body.shot .app { grid-template-columns: 1fr; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } .loading .fill, .sec > summary h2::after { transition: none; } }
 
 /* ===== Wygląd techniczny (BIM / CAD) ===== */
+.note-s { font-size: 12px; color: var(--muted); line-height: 1.4; }
+tbody tr.ro { cursor: default; }
+tbody tr.ro:hover td { background: inherit; }
+#sec-park td:first-child { font-family: var(--f-body); }
+#sec-park tfoot tr:first-child td { border-top: 2px solid var(--line-strong); }
 body { font-size: 13px; }
 .panel { padding: 14px 14px 18px max(14px, env(safe-area-inset-left, 0px)); gap: 12px; border-right: 1px solid var(--line-strong); }
 .eyebrow { font: 500 11px/1.3 var(--f-mono); letter-spacing: .06em; }
@@ -324,20 +329,31 @@ body.shot .statusbar { display: none; }
           <div class="kpi"><span class="v">2 508,7<small>m²</small></span><span class="k">pow. zabudowy · 13,3%</span></div>
           <div class="kpi"><span class="v">11 170<small>m²</small></span><span class="k">pow. całkowita (PUC)</span></div>
           <div class="kpi"><span class="v">0,59</span><span class="k">intensywność zabudowy</span></div>
-          <div class="kpi"><span class="v" id="kpi-stalls">104</span><span class="k">miejsc postojowych</span></div>
+          <div class="kpi"><span class="v" id="kpi-stalls">104</span><span class="k">miejsc postojowych naziemnych</span></div>
+          <div class="kpi"><span class="v" id="kpi-pum">8 043<small>m²</small></span><span class="k">PUM szacunkowy (72% PUC)</span></div>
+          <div class="kpi"><span class="v" id="kpi-gar">75</span><span class="k">miejsc w garażach (szac.)</span></div>
         </div>
+        <p class="note-s">PUM – powierzchnia użytkowa mieszkań, szacowana jako 72% PUC (typowo 0,68–0,75 dla budynków wielorodzinnych). Garaże: obrys postumentu ÷ 25 m² na stanowisko z drogą manewrową.</p>
       </details>
       <details class="sec" id="sec-zag" open>
         <summary><h2 id="h-zag">Zagospodarowanie terenu <span>m² · %</span></h2></summary>
         <div class="bar" id="bar" role="img" aria-label="Udział form zagospodarowania w powierzchni terenu"></div>
         <ul class="legend" id="legend"></ul>
       </details>
+      <details class="sec" id="sec-park" open>
+        <summary><h2 id="h-park">Miejsca postojowe <span>liczone z modelu</span></h2></summary>
+        <table>
+          <thead><tr><th>Lokalizacja</th><th>Miejsc</th></tr></thead>
+          <tbody id="ptab"><tr><td>wczytywanie…</td><td></td></tr></tbody>
+          <tfoot id="pfoot"></tfoot>
+        </table>
+      </details>
       <details class="sec" id="sec-bud" open>
         <summary><h2 id="h-bud">Budynki <span>kliknij, by pokazać</span></h2></summary>
         <table>
-          <thead><tr><th>Bud.</th><th>Kond.</th><th>Zabud. m²</th><th>PUC m²</th></tr></thead>
+          <thead><tr><th>Bud.</th><th>Kond.</th><th>Zabud. m²</th><th>PUC m²</th><th>PUM m²</th></tr></thead>
           <tbody id="btab"></tbody>
-          <tfoot><tr><td>Razem</td><td></td><td>2 508,7</td><td>11 170,2</td></tr></tfoot>
+          <tfoot><tr><td>Razem</td><td></td><td>2 508,7</td><td>11 170,2</td><td id="pum-total">8 042,5</td></tr></tfoot>
         </table>
       </details>
     </div>
@@ -499,7 +515,9 @@ const BUILDINGS = [
 ];
 // budynki typu A (A1–A4, B) stoją na postumencie 1,5 m z garażem podziemnym
 const POD_H = 1.5, GAR_FLOOR = -1.8;
-for (const b of BUILDINGS) if (b.t === 'A') { b.pod = POD_H; b.top += POD_H; b.pm += POD_H; b.garA = 391.6; }
+const PUM_K = 0.72;                 // PUM ≈ 72% PUC (szacunek)
+const GAR_M2 = 25;                  // m² garażu na stanowisko z drogą manewrową
+for (const b of BUILDINGS) if (b.t === 'A') { b.pod = POD_H; b.top += POD_H; b.pm += POD_H; b.garA = 391.6; b.garN = Math.floor(391.6 / GAR_M2); }
 const LANDUSE = [
   { k: 'Zabudowa', a: 2508.7, c: '--c-bld' },
   { k: 'Jezdnie', a: 2725.8, c: '--c-road' },
@@ -525,7 +543,7 @@ for (const u of LANDUSE) {
 const btab = document.getElementById('btab');
 for (const b of BUILDINGS) {
   const tr = document.createElement('tr'); tr.tabIndex = 0; tr.dataset.b = b.n; tr.id = 'row-' + b.n;
-  tr.innerHTML = `<td><span class="tag">${label(b.n)}</span></td><td>${b.f}</td><td>${fmt(b.fp)}</td><td>${fmt(b.gfa)}</td>`;
+  tr.innerHTML = `<td><span class="tag">${label(b.n)}</span></td><td>${b.f}</td><td>${fmt(b.fp)}</td><td>${fmt(b.gfa)}</td><td>${fmt(b.gfa * PUM_K)}</td>`;
   tr.addEventListener('click', () => select(b.n, true));
   tr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(b.n, true); } });
   btab.append(tr);
@@ -873,7 +891,8 @@ function select(name, fly) {
     ['Attyka (EVRF2007)', fmt(b.top, 2) + ' m'],
     ['Wysokość od terenu', fmt(b.top - b.base, 2) + ' m'],
   ];
-  if (b.pod) rows.push(['Postument nad terenem', fmt(b.pod, 2) + ' m'], ['Garaż podziemny (obrys)', fmt(b.garA) + ' m²']);
+  rows.splice(4, 0, ['PUM szacunkowy (72% PUC)', fmt(b.gfa * PUM_K) + ' m²']);
+  if (b.pod) rows.push(['Postument nad terenem', fmt(b.pod, 2) + ' m'], ['Garaż podziemny (obrys)', fmt(b.garA) + ' m²'], ['Miejsca w garażu (szac.)', String(b.garN)]);
   if (b.deckA) rows.push(['Taras na dachu (użytkowy)', fmt(b.deckA) + ' m²'], ['Kiosk wyjścia na dach', '4,8 × 3,6 m']);
   document.getElementById('card-dl').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
   document.getElementById('card-note').textContent = `${fmt(b.gfa / 11170.2 * 100)}% powierzchni całkowitej koncepcji`;
@@ -1227,8 +1246,8 @@ function flatQuad(c0, a, d, len, dep, h) {   // prostokąt w planie: narożnik c
 }
 function buildStalls() {
   const rows = [
-    { o: [-91.62, 40.45], a: [0.107, 0.994], n: 4 },     // przy granicy zachodniej (P29–P30), w głąb na wschód
-    { o: [-61.2, 43.2], a: [0, 1], n: 3 },               // przy placyku D / zawrotka, wjazd od wschodu
+    { o: [-91.62, 40.45], a: [0.107, 0.994], n: 4, g: 'Przy budynku D (od ulicy)' },     // przy granicy zachodniej (P29–P30), w głąb na wschód
+    { o: [-61.2, 43.2], a: [0, 1], n: 3, g: 'Przy placyku między D a zawrotką' },               // przy placyku D / zawrotka, wjazd od wschodu
   ];
   const W = 2.6, D = 5.0, LW = 0.12;
   const pav = [], lines = [];
@@ -1244,6 +1263,7 @@ function buildStalls() {
   }
   addConceptMesh(quads(pav), 'PARKING_PAVERS', '#8e9093', { side: true, offset: true });
   addConceptMesh(quads(lines), 'MARKING_WHITE', '#ffffff', { side: true, offset: true });
+  for (const r of rows) PARK_COUNT[r.g] = (PARK_COUNT[r.g] || 0) + r.n;
   return rows.reduce((s, r) => s + r.n, 0);
 }
 function buildHedges() {
@@ -1323,15 +1343,16 @@ function buildNewRoads() {
 const UR_U = [0.8691, 0.4946], UR_R = [-0.4946, 0.8691];
 const urP = (u, r) => [UR_U[0] * u + UR_R[0] * r, UR_U[1] * u + UR_R[1] * r];
 function inPoly(x, y, ring) { let ins = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [ax, ay] = ring[i], [bx, by] = ring[j]; if (((ay > y) !== (by > y)) && (x < (bx - ax) * (y - ay) / (by - ay) + ax)) ins = !ins; } return ins; }
+const PARK_COUNT = {};
 const PARKS = [
   // u0, u1 (głębokość stanowiska), r0, r1 (rząd), opcjonalnie wyspa do przycięcia
-  { u: [-10.45, -5.55], r: [-49, 6], hole: 0 }, { u: [-5.45, -0.55], r: [-49, 6], hole: 0 },
-  { u: [-11.15, -6.05], r: [12, 58.3], hole: 1 }, { u: [-5.95, -0.95], r: [12, 58.3], hole: 1 },
-  { u: [-5.3, -0.3], r: [-85, -57.5] },        // przy pasie zachodnim (płd.)
-  { u: [-5.2, -0.2], r: [-127.5, -117.5] },    // przy wjeździe od płd.
-  { u: [-16.2, -11.2], r: [-60.7, -53.2] },    // przy łuku pasa zachodniego
-  { u: [5.4, 10.4], r: [-108.7, -103.7] },     // przy A1
-  { u: [10, 30], r: [12.5, 17.5], along: 'u' },// kieszeń przy C – rząd wzdłuż ulicy dojazdowej
+  { u: [-10.45, -5.55], r: [-49, 6], hole: 0, g: 'Wyspa parkingowa południowa' }, { u: [-5.45, -0.55], r: [-49, 6], hole: 0, g: 'Wyspa parkingowa południowa' },
+  { u: [-11.15, -6.05], r: [12, 58.3], hole: 1, g: 'Wyspa parkingowa północna' }, { u: [-5.95, -0.95], r: [12, 58.3], hole: 1, g: 'Wyspa parkingowa północna' },
+  { u: [-5.3, -0.3], r: [-85, -57.5], g: 'Przy pasie zachodnim' },
+  { u: [-5.2, -0.2], r: [-127.5, -117.5], g: 'Przy wjeździe południowym' },
+  { u: [-16.2, -11.2], r: [-60.7, -53.2], g: 'Przy pasie zachodnim' },
+  { u: [5.4, 10.4], r: [-108.7, -103.7], g: 'Przy budynku A1' },
+  { u: [10, 30], r: [12.5, 17.5], along: 'u', g: 'Kieszeń przy budynku C' },
 ];
 function buildParking() {
   const W = 2.5, LW = 0.12, pav = [], lines = [];
@@ -1354,7 +1375,7 @@ function buildParking() {
       // linie: dwie boczne + czołowa
       if (alongU) { lines.push(quadUR(u0 - LW / 2, u0 + LW / 2, r0, r1, h + 0.08), quadUR(u1 - LW / 2, u1 + LW / 2, r0, r1, h + 0.08)); }
       else { lines.push(quadUR(u0, u1, r0 - LW / 2, r0 + LW / 2, h + 0.08), quadUR(u0, u1, r1 - LW / 2, r1 + LW / 2, h + 0.08)); }
-      n++;
+      n++; PARK_COUNT[pk.g] = (PARK_COUNT[pk.g] || 0) + 1;
     }
   }
   addConceptMesh(quads(pav), 'PARKING_PAVERS', '#8e9093', { side: true, offset: true });
@@ -1636,6 +1657,7 @@ Promise.all([load('models/concept.glb', 'concept'), load('models/context.glb', '
   buildRoofs();
   const nPark = buildParking() + buildStalls();
   const kv = document.getElementById('kpi-stalls'); if (kv) kv.textContent = nPark;
+  fillCounts(nPark);
   buildHedges();
   buildConnectors();
   buildNewRoads();
@@ -1957,6 +1979,22 @@ $('shot-copy').addEventListener('click', async () => {
 
 /* ---------- Granica terenu inwestycji: linia przerywana o stałej grubości + znaczniki punktów załamania ---------- */
 const siteLineMats = [];
+
+/* ---------- Zestawienie: miejsca postojowe i PUM ---------- */
+function fillCounts(nPark) {
+  const nGar = BUILDINGS.reduce((s, b) => s + (b.garN || 0), 0);
+  const pum = BUILDINGS.reduce((s, b) => s + b.gfa * PUM_K, 0);
+  const fmt0 = v => v.toLocaleString('pl-PL', { maximumFractionDigits: 0 });
+  document.getElementById('ptab').innerHTML = Object.entries(PARK_COUNT).sort((a, b) => b[1] - a[1])
+    .map(([g, n]) => `<tr class="ro"><td>${g}</td><td>${n}</td></tr>`).join('');
+  document.getElementById('pfoot').innerHTML = `<tr><td>Razem naziemne</td><td>${nPark}</td></tr>`
+    + `<tr><td>Garaże pod A1–A4 i B (szac.)</td><td>${nGar}</td></tr>`
+    + `<tr><td>Razem</td><td>${nPark + nGar}</td></tr>`
+    + `<tr><td>Wskaźnik na 1000 m² PUM</td><td>${fmt((nPark + nGar) / pum * 1000, 1)}</td></tr>`;
+  document.getElementById('kpi-gar').textContent = nGar;
+  document.getElementById('kpi-pum').innerHTML = `${fmt0(pum)}<small>m²</small>`;
+  document.getElementById('pum-total').textContent = fmt(pum);
+}
 
 /* ---------- Pasek stanu: współrzędne terenu pod kursorem (PL-2000/5, EVRF2007) ---------- */
 const sbCoord = document.getElementById('sb-coord'), sbHint = document.getElementById('hint');
