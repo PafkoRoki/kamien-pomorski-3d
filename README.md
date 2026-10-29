@@ -8,7 +8,7 @@ Interaktywna przeglądarka 3D koncepcji zagospodarowania działek 100/15, 100/16
 - 8 widoków z perspektywy człowieka (oko 1,7 m, szeroki kąt)
 - tryb zrzutu: kadry 16:9/3:2/4:3/1:1/9:16, światło, wybór widoku, eksport PNG do 3840 px, kopiowanie obrazu
 - budynki typu A (A1–A4, B) na postumencie 1,5 m z garażem podziemnym i rampą zjazdową
-- łącznice dróg koncepcji z ul. Lipową i Kanałową
+- ulice wg rysunku, kończące się na granicy działki
 - drzewa otoczenia (`models/trees.json`), łodzie i żaglówki na Zalewie, krowy na łąkach
 - bilans terenu, warstwy
 - symulacja nasłonecznienia dla 21.03, 21.06, 21.12
