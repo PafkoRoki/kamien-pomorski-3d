@@ -252,6 +252,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /* ---------- Dane koncepcji (z concept3d.json) ---------- */
 const SITE = 18933;
@@ -265,6 +266,9 @@ const BUILDINGS = [
   { n: 'D_N', f: 5, t: '', fp: 278.1, gfa: 1390.6, base: 1.78, top: 18.85, pm: 2.25, c: [-75.7, 63.6] },
   { n: 'D_S', f: 4, t: '', fp: 170.3, gfa: 681.3, base: 1.79, top: 15.65, pm: 2.25, c: [-75.3, 45.0] },
 ];
+// budynki typu A (A1–A4, B) stoją na postumencie 1,5 m z garażem podziemnym
+const POD_H = 1.5, GAR_FLOOR = -1.8;
+for (const b of BUILDINGS) if (b.t === 'A') { b.pod = POD_H; b.top += POD_H; b.pm += POD_H; b.garA = 391.6; }
 const LANDUSE = [
   { k: 'Zabudowa', a: 2508.7, c: '--c-bld' },
   { k: 'Jezdnie', a: 2725.8, c: '--c-road' },
@@ -360,12 +364,15 @@ const LAYERS = [
   { id: 'l-ctree', name: 'Drzewa nowe i zachowane', re: /^C3D_TREE/, on: true },
   { id: 'l-csite', name: 'Granica terenu inwestycji', re: /^C3D_SITE/, on: true },
   { id: 'l-cgrid', name: 'Siatka modularna 5 m', re: /^C3D_GRID/, on: false },
+  { id: 'l-cgar', name: 'Garaże podziemne (prześwietlenie)', re: null, on: false },
   { g: 'Kontekst 500 m' },
   { id: 'l-xbld', name: 'Zabudowa istniejąca', re: /^BLD_/, on: true },
   { id: 'l-xstr', name: 'Ulice, chodniki, parkingi', re: /^(ROAD|PATH|PARKING|RAIL|WALL|RETAINING|HEDGE)/, on: true },
   { id: 'l-xgrn', name: 'Zieleń i drzewa', re: /^(GREEN|TREE)/, on: true },
   { id: 'l-xter', name: 'Teren (NMT)', re: /^TERRAIN/, on: true },
   { id: 'l-xwat', name: 'Zalew Kamieński, marina, pomosty', re: /^(WATER|MARINA|PIER)/, on: true },
+  { id: 'l-xboat', name: 'Łodzie i żaglówki', re: null, on: true },
+  { id: 'l-xcow', name: 'Krowy na pastwiskach', re: null, on: true },
   { id: 'l-xegb', name: 'Działki ewidencyjne, granica MPZP', re: /^(EGIB|MPZP)/, on: false },
 ];
 const layerNodes = new Map(LAYERS.filter(l => l.id).map(l => [l.id, []]));
@@ -392,7 +399,7 @@ const LAND = {
   TERRACE: '#c79a66', PATH_PAVERS: '#e6d9bc', PLAYGROUND: '#e5703a', PLAY_SAND: '#f2d27f',
   PLAY_MOUND_GRASS: '#58a043', LAWN: '#67b04a', GROUND: '#98c068', EXISTING_MEADOW: '#b9c98f',
   TREE_CROWN_SITE: '#2f9a58', TREE_CROWN: '#4f8f45', TREE_TRUNK: '#6b5340',
-  SITE_BOUNDARY: '#e23b26', DESIGN_GRID: '#2f6fd6',
+  SITE_BOUNDARY: '#e23b26', DESIGN_GRID: '#2f6fd6', PODIUM: '#b7b0a4', DOOR: '#23262a',
 };
 const PALETTES = {
   akcent: {
@@ -420,7 +427,7 @@ const PALETTES = {
       ASPHALT: '#d6d3cd', PARKING_PAVERS: '#e2dfd9', MARKING_WHITE: '#ffffff', CURB: '#faf9f6', TERRACE: '#e8ddcc',
       PATH_PAVERS: '#f6f2ea', PLAYGROUND: '#e8d6c2', PLAY_SAND: '#efe4cc', PLAY_MOUND_GRASS: '#dfe6d4', LAWN: '#e4ead9',
       GROUND: '#eef0e8', EXISTING_MEADOW: '#efefe9', TREE_CROWN_SITE: '#bcd3b2', TREE_CROWN: '#cad8c2', TREE_TRUNK: '#c8b8a4',
-      SITE_BOUNDARY: '#c0392b', DESIGN_GRID: '#7f9cc4' },
+      SITE_BOUNDARY: '#c0392b', DESIGN_GRID: '#7f9cc4', PODIUM: '#c49a6d', DOOR: '#7a5a3c' },
     edge: '#7a5a3c', edgeOp: .55, sel: 0x1d5c8f,
     legend: [['Budynki projektowane', '#dcb68c'], ['Zagospodarowanie', '#f6f2ea'], ['Otoczenie', '#f3f1ed']],
   },
@@ -470,7 +477,7 @@ function applyPalette() {
     if (o.userData.concept) { const col = p.concept[mk]; o.material = col ? colorMat(om, col) : om; continue; }
     o.material = mutedMat(om, k === 'water' ? p.water : k === 'tree' ? p.tree : p.ctx);
   }
-  for (const o of allMeshes) if (o.userData.clip) clipSite(o.material);
+  for (const o of allMeshes) { if (o.userData.clip) clipSite(o.material); if (o.userData.hole) clipHoles(o.material); }
   for (const l of edgeLines) { l.material.color.set(p.edge); l.material.opacity = p.edgeOp; }
   if (selected) tint(selected, 'sel');
   document.querySelectorAll('.pal').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.p === palKey)));
@@ -482,9 +489,10 @@ function applyPalette() {
 const SITE_RING = [[130.05,-159.6],[103.88,-177.31],[71.08,-135.09],[56.13,-133.62],[50.03,-189.95],[31.4,-166.26],[37.74,-159.88],[7.45,-129.75],[18.25,-135.6],[20.04,-138.1],[40.1,-149.25],[58.25,-120.6],[47.2,-106.6],[20.13,-111.04],[19.16,-105.04],[36.73,-93.98],[43.4,-86.54],[31.93,-76.14],[22.67,-67.75],[9.33,-55.66],[-4.0,-43.58],[-17.32,-31.51],[-30.66,-19.45],[-43.68,-7.49],[-60.21,8.05],[-69.0,18.8],[-67.69,31.23],[-92.52,34.01],[-91.78,40.97],[-91.23,46.07],[-87.86,80.93],[-36.33,84.86],[-25.2,84.69],[-14.48,82.56],[-4.83,75.51],[3.2,63.27],[95.42,-98.76],[130.05,-159.6]];
 const ringU = { value: SITE_RING.map(([x, y]) => new THREE.Vector2(x, y)) };
 const N_RING = SITE_RING.length;
+const siteClipped = new WeakSet(), holeClipped = new WeakSet();
 function clipSite(m) {
-  if (m.userData.clip) return;
-  m.userData.clip = true;
+  if (siteClipped.has(m)) return;
+  siteClipped.add(m);
   m.onBeforeCompile = sh => {
     sh.uniforms.uRing = ringU;
     sh.vertexShader = 'varying vec3 vWPos;\n' + sh.vertexShader.replace('#include <project_vertex>',
@@ -550,6 +558,7 @@ function select(name, fly) {
     ['Attyka (EVRF2007)', fmt(b.top, 2) + ' m'],
     ['Wysokość od terenu', fmt(b.top - b.base, 2) + ' m'],
   ];
+  if (b.pod) rows.push(['Postument nad terenem', fmt(b.pod, 2) + ' m'], ['Garaż podziemny (obrys)', fmt(b.garA) + ' m²']);
   document.getElementById('card-dl').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
   document.getElementById('card-note').textContent = `${fmt(b.gfa / 11170.2 * 100)}% powierzchni całkowitej koncepcji`;
   card.hidden = false;
@@ -597,7 +606,7 @@ const showProg = () => { loadmsg.textContent = `Wczytywanie modelu… ${Math.rou
 function prepare(root, isConcept) {
   for (const top of [...root.children]) {
     const name = top.name || '';
-    for (const l of LAYERS) if (l.id && l.re.test(name)) { layerNodes.get(l.id).push(top); top.visible = l.on; }
+    for (const l of LAYERS) if (l.id && l.re && l.re.test(name)) { layerNodes.get(l.id).push(top); top.visible = l.on; }
     const bm = isConcept && name.match(/^C3D_BLD_(.+?)_\d+k/);
     top.traverse(o => {
       if (!o.isMesh) return;
@@ -626,6 +635,7 @@ function prepare(root, isConcept) {
         o.add(edges); edgeLines.push(edges);
       }
       o.userData.concept = isConcept;
+      o.userData.top = name;
       o.userData.clip = !isConcept && /^(TERRAIN|ROAD|PATH|PARKING|GREEN|HEDGE|WALL|RETAINING|RAIL)/.test(name);
       origMat.set(o, o.material);
       o.userData.kind = isConcept ? (bm ? 'new' : (isTree ? 'tree' : (/GROUND/.test(name) ? 'ground' : 'land'))) :
@@ -638,15 +648,366 @@ function prepare(root, isConcept) {
 function load(url, key) {
   return new Promise((res, rej) => loader.load(url, g => res(g.scene), e => { prog[key] = e.loaded; showProg(); }, rej));
 }
-Promise.all([load('models/concept.glb', 'concept'), load('models/context.glb', 'context')]).then(([concept, context]) => {
+/* =====================================================================
+   Dodatki: postumenty z garażem, zjazdy, łącznice dróg, drzewa, łodzie, krowy
+   ===================================================================== */
+const PODIUMS = [{"n":"B","base":1.78,"pod":[[-57.43,18.52],[-61.14,25.04],[-48.97,31.96],[-47.12,28.7],[-44.94,29.94],[-44.32,28.85],[-42.15,30.09],[-36.46,20.09],[-37.55,19.48],[-35.7,16.22],[-36.78,15.6],[-36.16,14.51],[-50.5,6.35],[-52.36,9.61],[-53.44,8.99],[-58.51,17.9]],"ramp":{"hi":[[-61.29,25.3],[-63.07,28.43]],"lo":[[-49.12,32.22],[-50.9,35.35]],"u":[0.8691,0.4947],"n":[-0.4947,0.8691]}},{"n":"A4","base":1.18,"pod":[[17.26,-6.57],[13.55,-0.05],[25.72,6.87],[27.57,3.61],[29.75,4.85],[30.36,3.76],[32.54,5.0],[38.23,-5.0],[37.14,-5.61],[38.99,-8.87],[37.91,-9.49],[38.53,-10.58],[24.19,-18.74],[22.33,-15.48],[21.24,-16.1],[16.18,-7.19]],"ramp":{"hi":[[37.59,-11.46],[39.37,-14.59]],"lo":[[25.42,-18.38],[27.2,-21.51]],"u":[-0.8691,-0.4947],"n":[0.4947,-0.8691]}},{"n":"A3","base":0.83,"pod":[[35.81,-39.16],[32.1,-32.65],[44.27,-25.72],[46.12,-28.98],[48.3,-27.74],[48.91,-28.83],[51.09,-27.59],[56.77,-37.59],[55.69,-38.21],[57.54,-41.47],[56.46,-42.08],[57.08,-43.17],[42.74,-51.33],[40.88,-48.07],[39.79,-48.69],[34.72,-39.78]],"ramp":{"hi":[[56.14,-44.05],[57.92,-47.18]],"lo":[[43.97,-50.97],[45.75,-54.1]],"u":[-0.8691,-0.4946],"n":[0.4946,-0.8691]}},{"n":"A2","base":0.57,"pod":[[54.36,-71.75],[50.65,-65.24],[62.82,-58.31],[64.67,-61.57],[66.84,-60.33],[67.46,-61.42],[69.63,-60.18],[75.32,-70.18],[74.24,-70.8],[76.09,-74.06],[75.01,-74.67],[75.63,-75.76],[61.28,-83.92],[59.43,-80.66],[58.34,-81.28],[53.27,-72.37]],"ramp":{"hi":[[74.69,-76.64],[76.47,-79.77]],"lo":[[62.52,-83.56],[64.3,-86.69]],"u":[-0.8691,-0.4946],"n":[0.4946,-0.8691]}},{"n":"A1","base":0.62,"pod":[[72.91,-104.35],[69.2,-97.83],[81.37,-90.9],[83.22,-94.16],[85.39,-92.92],[86.01,-94.01],[88.18,-92.77],[93.87,-102.77],[92.79,-103.39],[94.64,-106.65],[93.56,-107.27],[94.17,-108.35],[79.83,-116.51],[77.98,-113.25],[76.89,-113.87],[71.82,-104.97]],"ramp":{"hi":[[93.24,-109.23],[95.02,-112.36]],"lo":[[81.07,-116.15],[82.85,-119.28]],"u":[-0.8691,-0.4946],"n":[0.4946,-0.8691]}}];
+// łącznice: [cofnięcie w drogę koncepcji, koniec drogi koncepcji, najbliższy punkt istniejącej ulicy] (OSM)
+const CONNECTORS = [
+  { name: 'zjazd_poludniowy → Lipowa', w: 6, pts: [[104.68, -113.01], [108.16, -111.03], [111.94, -108.9]] },
+  { name: 'wjazd_100-16 → Kanałowa', w: 6, pts: [[20.52, -107.54], [17.04, -109.52], [13.38, -110.07]] },
+  { name: 'dojazd_parking_A4 → Lipowa', w: 5, pts: [[4.95, 28.7], [8.43, 30.68], [27.09, 41.28]] },
+  { name: 'droga_zachodnia → Księcia Kazimierza I', w: 6, pts: [[9.72, -47.39], [11.7, -50.87], [-15.63, -80.76]] },
+];
+
+function inSite(x, y) {
+  let ins = false;
+  for (let i = 0, j = N_RING - 1; i < N_RING; j = i++) {
+    const [ax, ay] = SITE_RING[i], [bx, by] = SITE_RING[j];
+    if (((ay > y) !== (by > y)) && (x < (bx - ax) * (y - ay) / (by - ay) + ax)) ins = !ins;
+  }
+  return ins;
+}
+function addToLayer(id, obj) { layerNodes.get(id).push(obj); obj.visible = LAYERS.find(l => l.id === id).on; }
+const _ray = new THREE.Raycaster(), _down = new THREE.Vector3(0, -1, 0), _o = new THREE.Vector3();
+function hitAt(x, y, targets) { _ray.set(_o.set(x, 400, -y), _down); return _ray.intersectObjects(targets, false)[0]; }
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// materiały „jak koncepcja” (paleta zmienia ich kolor po kluczu z nazwy)
+const conceptMats = {};
+function baseMat(key, fallback) {
+  if (!conceptMats[key]) { const m = new THREE.MeshStandardMaterial({ color: fallback, roughness: .9 }); m.name = 'MAT_C3D_' + key; conceptMats[key] = m; }
+  return conceptMats[key];
+}
+function addConceptMesh(geo, key, fallback, o = {}) {
+  let mat = baseMat(key, fallback);
+  if (o.own || o.offset) { mat = mat.clone(); mat.userData.c0 = mat.color.clone(); }
+  // łącznice: przesunięcie głębi, żeby nierówny teren otoczenia nie przebijał przez asfalt
+  if (o.offset) { mat.polygonOffset = true; mat.polygonOffsetFactor = -2; mat.polygonOffsetUnits = -4; }
+  if (o.side) mat.side = THREE.DoubleSide;
+  const m = new THREE.Mesh(geo, mat);
+  m.castShadow = !!o.cast; m.receiveShadow = true;
+  Object.assign(m.userData, { kind: o.kind || 'land', concept: true, extra: true });
+  origMat.set(m, m.material); allMeshes.push(m); scene.add(m);
+  return m;
+}
+const shapeOf = ring => { const s = new THREE.Shape(); ring.forEach(([x, y], i) => i ? s.lineTo(x, y) : s.moveTo(x, y)); return s; };
+function prism(ring, y0, y1) { const g = new THREE.ExtrudeGeometry(shapeOf(ring), { depth: y1 - y0, bevelEnabled: false }); g.rotateX(-Math.PI / 2); g.translate(0, y0, 0); return g; }
+function quads(list) { // list of [p0,p1,p2,p3] Vector3 -> geometry
+  const pos = [];
+  for (const [a, b, c, d] of list) pos.push(...a.toArray(), ...b.toArray(), ...c.toArray(), ...a.toArray(), ...c.toArray(), ...d.toArray());
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); return g;
+}
+function addEdges(mesh, color = 0x262b30) {
+  const e = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry, 30), new THREE.LineBasicMaterial({ color, transparent: true, opacity: .55, depthWrite: false }));
+  e.raycast = () => {}; mesh.add(e); edgeLines.push(e);
+}
+
+/* --- wycięcia w terenie koncepcji pod rampy zjazdowe (shader) --- */
+const HOLES = [];
+const holesU = { value: [] };
+function clipHoles(m) {
+  if (holeClipped.has(m) || !HOLES.length) return;
+  holeClipped.add(m);
+  const NH = HOLES.length;
+  m.onBeforeCompile = sh => {
+    sh.uniforms.uHoles = holesU;
+    sh.vertexShader = 'varying vec3 vWPos2;\n' + sh.vertexShader.replace('#include <project_vertex>',
+      '#include <project_vertex>\n  vWPos2 = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = `varying vec3 vWPos2;\nuniform vec2 uHoles[${NH * 4}];\n` + sh.fragmentShader.replace('#include <clipping_planes_fragment>',
+      `#include <clipping_planes_fragment>
+  {
+    vec2 p = vec2(vWPos2.x, -vWPos2.z);
+    for (int h = 0; h < ${NH}; h++) {
+      bool ins = true;
+      for (int k = 0; k < 4; k++) {
+        vec2 a = uHoles[h * 4 + k], b = uHoles[h * 4 + (k + 1) % 4];
+        if ((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x) < 0.0) ins = false;
+      }
+      if (ins) discard;
+    }
+  }`);
+  };
+  m.customProgramCacheKey = () => 'holes' + NH;
+  m.needsUpdate = true;
+}
+
+function buildPodiums(concept) {
+  // podnieś budynki typu A o wysokość postumentu
+  for (const top of concept.children) if (/^C3D_BLD_(B|A\d)_/.test(top.name)) top.position.y += POD_H;
+  const V = (p, h) => P(p[0], p[1], h);
+  const gar = new THREE.Group(); scene.add(gar); addToLayer('l-cgar', gar);
+  for (const pd of PODIUMS) {
+    const base = pd.base;
+    // postument: od dna garażu do +1,5 m nad terenem (część podziemna ukryta pod terenem, widoczna w rampie)
+    const pod = addConceptMesh(prism(pd.pod, base + GAR_FLOOR - 0.1, base + POD_H), 'PODIUM', '#8f8a83', { own: true, kind: 'new', cast: true });
+    pod.userData.bld = pd.n; pickables.push(pod); bldMeshes.get(pd.n)?.push(pod); addEdges(pod);
+    // rampa zjazdowa do garażu wzdłuż ściany postumentu
+    const { hi, lo, u, n } = pd.ramp;
+    const at = (p, k, du = 0) => [p[0] + n[0] * k + u[0] * du, p[1] + n[1] * k + u[1] * du];
+    const H0 = at(hi[0], -0.3), H1 = hi[1], L0 = at(lo[0], -0.3), L1 = lo[1];   // od ściany (0) do 3,9 m
+    const top = base + 0.02, bot = base + GAR_FLOOR, rail = base + 1.0;
+    addConceptMesh(quads([[V(H0, top), V(H1, top), V(L1, bot), V(L0, bot)]]), 'ASPHALT', '#3d3d3f', { side: true });
+    addConceptMesh(quads([
+      [V(H1, top - 0.6), V(L1, bot), V(L1, rail), V(H1, rail)],          // ściana oporowa z balustradą
+      [V(L0, bot), V(L1, bot), V(L1, rail), V(L0, rail)],                // ściana czołowa
+    ]), 'PODIUM', '#8f8a83', { side: true, cast: true });
+    // brama garażu w ścianie postumentu na dole rampy
+    const D0 = at(lo[0], -0.27), D1 = at(lo[0], -0.27, -5.0);
+    addConceptMesh(quads([[V(D0, bot), V(D1, bot), V(D1, bot + 2.6), V(D0, bot + 2.6)]]), 'DOOR', '#1e2124', { side: true });
+    // wycięcie w terenie koncepcji (czworobok CCW, z zapasem)
+    let q = [at(hi[0], -0.32, -0.2), at(hi[1], 0.3, -0.2), at(lo[1], 0.3, 0.2), at(lo[0], -0.32, 0.2)];
+    const area = q.reduce((s, p, i) => { const r = q[(i + 1) % 4]; return s + p[0] * r[1] - r[0] * p[1]; }, 0);
+    if (area < 0) q = q.reverse();
+    HOLES.push(q);
+    // garaż podziemny - „prześwietlenie” (warstwa)
+    const gmat = new THREE.MeshBasicMaterial({ color: 0xe8892f, transparent: true, opacity: .22, depthTest: false, depthWrite: false });
+    const gm = new THREE.Mesh(prism(pd.pod, base + GAR_FLOOR, base + POD_H - 0.3), gmat); gm.renderOrder = 20; gm.raycast = () => {};
+    const ge = new THREE.LineSegments(new THREE.EdgesGeometry(gm.geometry, 30), new THREE.LineBasicMaterial({ color: 0xe8892f, depthTest: false, transparent: true }));
+    ge.renderOrder = 21; gar.add(gm, ge);
+  }
+  holesU.value = HOLES.flat().map(([x, y]) => new THREE.Vector2(x, y));
+  // tnij teren / nawierzchnie koncepcji (bez budynków i dodatków)
+  for (const o of allMeshes) if (o.userData.concept && !o.userData.extra && /ground|land/.test(o.userData.kind)) o.userData.hole = true;
+}
+
+function buildConnectors() {
+  const conceptGround = allMeshes.filter(o => o.userData.concept && !o.userData.extra && /ground|land/.test(o.userData.kind));
+  const ctxGround = allMeshes.filter(o => !o.userData.concept && /^(TERRAIN|ROAD|PATH|PARKING|GREEN)/.test(o.userData.top || ''));
+  const gz = (x, y) => { const h = hitAt(x, y, inSite(x, y) ? conceptGround : ctxGround) || hitAt(x, y, ctxGround); return h ? h.point.y : 1; };
+  for (const c of CONNECTORS) {
+    // zagęść oś co 1,5 m
+    const d = [];
+    for (let i = 0; i < c.pts.length - 1; i++) {
+      const [ax, ay] = c.pts[i], [bx, by] = c.pts[i + 1], L = Math.hypot(bx - ax, by - ay), n = Math.max(1, Math.ceil(L / 1.5));
+      for (let k = 0; k < n; k++) d.push([ax + (bx - ax) * k / n, ay + (by - ay) * k / n]);
+    }
+    d.push(c.pts[c.pts.length - 1]);
+    const pos = [], idx = [];
+    d.forEach(([x, y], i) => {
+      const a = d[Math.max(0, i - 1)], b = d[Math.min(d.length - 1, i + 1)];
+      let dx = b[0] - a[0], dy = b[1] - a[1]; const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
+      const nx = -dy * c.w / 2, ny = dx * c.w / 2;
+      const h = Math.max(gz(x, y), gz(x + nx, y + ny), gz(x - nx, y - ny)) + 0.12;
+      pos.push(...P(x + nx, y + ny, h).toArray(), ...P(x - nx, y - ny, h).toArray());
+      if (i) { const k = i * 2; idx.push(k - 2, k - 1, k, k - 1, k + 1, k); }
+    });
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+    if (g.attributes.normal.getY(0) < 0) { g.setIndex(idx.map((v, i) => idx[i - i % 3 + (2 - i % 3)])); g.computeVertexNormals(); }
+    addConceptMesh(g, 'ASPHALT', '#3d3d3f', { side: true, offset: true });
+    // zaokrąglone włączenie do istniejącej ulicy
+    const [ex, ey] = c.pts[c.pts.length - 1];
+    const disc = new THREE.CircleGeometry(c.w * 0.85, 28).rotateX(-Math.PI / 2);
+    disc.translate(...P(ex, ey, gz(ex, ey) + 0.07).toArray());
+    addConceptMesh(disc, 'ASPHALT', '#3d3d3f', { offset: true });
+  }
+}
+
+/* --- drzewa otoczenia: instancje, połowa wysokości i korony --- */
+let TREES = [];
+const treeGrid = new Map();
+function buildTrees(data) {
+  const keep = data.filter(t => !inSite(t[0], t[1]));
+  TREES = keep.map(t => ({ x: t[0], y: t[1], r: Math.max(t[4] * 0.5, 0.6) }));
+  for (const t of TREES) { const k = Math.floor(t.x / 10) + ',' + Math.floor(t.y / 10); (treeGrid.get(k) || treeGrid.set(k, []).get(k)).push(t); }
+  const crownM = new THREE.MeshStandardMaterial({ roughness: .95 }); crownM.color.setRGB(.42, .56, .36); crownM.name = 'MAT_TREE_CROWN';
+  const trunkM = new THREE.MeshStandardMaterial({ roughness: .95 }); trunkM.color.setRGB(.40, .34, .28); trunkM.name = 'MAT_TREE_TRUNK';
+  const trunkG = new THREE.CylinderGeometry(0.5, 0.7, 1, 6).translate(0, 0.5, 0);
+  const crownG = new THREE.IcosahedronGeometry(1, 2), coneG = new THREE.ConeGeometry(1, 1, 10).translate(0, 0.5, 0);
+  const dec = keep.filter(t => !t[5]), con = keep.filter(t => t[5]);
+  const trunks = new THREE.InstancedMesh(trunkG, trunkM, keep.length);
+  const crowns = new THREE.InstancedMesh(crownG, crownM, dec.length);
+  const cones = new THREE.InstancedMesh(coneG, crownM, Math.max(con.length, 1)); cones.count = con.length;
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
+  const R = rng(7);
+  let ti = 0, ci = 0, ki = 0;
+  for (const t of keep) {
+    const [x, y, z] = t, h = Math.max(t[3] * 0.5, 2), r = Math.max(t[4] * 0.5, 0.6);
+    if (t[5]) {
+      m.compose(p.set(x, z + h * 0.15, -y), q.identity(), s.set(r, h * 0.85, r)); cones.setMatrixAt(ki++, m);
+      m.compose(p.set(x, z, -y), q.identity(), s.set(r * 0.12, h * 0.2, r * 0.12)); trunks.setMatrixAt(ti++, m);
+    } else {
+      const ry = Math.min(h * 0.42, r * 1.25), cy = z + h - ry;
+      m.compose(p.set(x, cy, -y), q.setFromAxisAngle(Y, R() * 6.28), s.set(r, ry, r)); crowns.setMatrixAt(ci++, m);
+      m.compose(p.set(x, z, -y), q.identity(), s.set(r * 0.14, Math.max(cy - z, 0.5), r * 0.14)); trunks.setMatrixAt(ti++, m);
+    }
+  }
+  for (const im of [trunks, crowns, cones]) {
+    im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); im.castShadow = true; im.receiveShadow = false;
+    Object.assign(im.userData, { kind: 'tree', concept: false, top: 'TREE_CTX' });
+    origMat.set(im, im.material); allMeshes.push(im); scene.add(im); addToLayer('l-xgrn', im);
+  }
+}
+function nearTree(x, y, pad) {
+  const cx = Math.floor(x / 10), cy = Math.floor(y / 10);
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++)
+    for (const t of treeGrid.get((cx + i) + ',' + (cy + j)) || []) if (Math.hypot(t.x - x, t.y - y) < t.r + pad) return true;
+  return false;
+}
+const idle = () => new Promise(r => setTimeout(r, 0));
+
+/* --- łodzie i żaglówki na Zalewie --- */
+function boatParts() {
+  const s = new THREE.Shape();
+  s.moveTo(-0.5, -0.15); s.lineTo(0.18, -0.17); s.quadraticCurveTo(0.42, -0.13, 0.5, 0); s.quadraticCurveTo(0.42, 0.13, 0.18, 0.17); s.lineTo(-0.5, 0.15); s.closePath();
+  const hull = new THREE.ExtrudeGeometry(s, { depth: 0.09, bevelEnabled: true, bevelThickness: 0.01, bevelSize: 0.01, bevelSegments: 2 });
+  hull.rotateX(-Math.PI / 2); hull.translate(0, -0.035, 0);
+  const cabin = new THREE.BoxGeometry(0.28, 0.05, 0.19).translate(-0.06, 0.09, 0);
+  const mcabin = new THREE.BoxGeometry(0.34, 0.1, 0.24).translate(-0.05, 0.11, 0);
+  const mast = new THREE.CylinderGeometry(0.005, 0.006, 1.25, 6).translate(0.08, 0.69, 0);
+  const sailS = new THREE.Shape(); sailS.moveTo(0.075, 0.13); sailS.lineTo(0.075, 1.28); sailS.lineTo(-0.36, 0.15); sailS.closePath();
+  const jibS = new THREE.Shape(); jibS.moveTo(0.09, 1.12); jibS.lineTo(0.47, 0.1); jibS.lineTo(0.09, 0.13); jibS.closePath();
+  const sail = mergeGeometries([new THREE.ShapeGeometry(sailS), new THREE.ShapeGeometry(jibS)]);
+  return { hull, cabin, mcabin, mast, sail };
+}
+async function buildBoats() {
+  const water = allMeshes.find(o => o.userData.kind === 'water');
+  if (!water) return;
+  const piers = allMeshes.filter(o => /^PIER/.test(o.userData.top || ''));
+  const targets = [water, ...piers];
+  const box = new THREE.Box3().setFromObject(water);
+  const R = rng(42);
+  const wAt = (x, y) => { const h = hitAt(x, y, targets); return h && h.object === water ? h.point.y : null; };
+  const pierAt = (x, y) => { const h = hitAt(x, y, targets); return !!(h && h.object !== water); };
+  const DIRS = [...Array(8)].map((_, i) => [Math.cos(i * Math.PI / 4), Math.sin(i * Math.PI / 4)]);
+  const boats = [];
+  const free = (x, y, d) => boats.every(b => Math.hypot(b.x - x, b.y - y) > d);
+  // przy pomostach (marina)
+  const pierBoxes = piers.map(o => new THREE.Box3().setFromObject(o).expandByScalar(7));
+  for (let i = 0; i < 4000 && boats.filter(b => b.moored).length < 48; i++) {
+    const pb = pierBoxes[Math.floor(R() * pierBoxes.length)];
+    const x = pb.min.x + R() * (pb.max.x - pb.min.x), y = -pb.max.z + R() * (pb.max.z - pb.min.z);
+    const wy = wAt(x, y); if (wy === null) continue;
+    let dir = null;
+    for (const [dx, dy] of DIRS.filter((_, k) => k % 2 === 0)) if (pierAt(x + dx * 5, y + dy * 5)) { dir = [dx, dy]; break; }
+    if (!dir || !free(x, y, 4.2) || pierAt(x, y) || pierAt(x - dir[0] * 3, y - dir[1] * 3)) continue;
+    if (wAt(x - dir[0] * 4, y - dir[1] * 4) === null) continue;
+    boats.push({ x, y, wy, a: Math.atan2(dir[1], dir[0]), L: 6 + R() * 3.5, sail: false, motor: R() < 0.35, moored: true });
+    if (i % 40 === 0) await idle();
+  }
+  // żaglówki na otwartej wodzie
+  for (let i = 0; i < 1500 && boats.filter(b => !b.moored).length < 16; i++) {
+    const x = box.min.x + R() * (box.max.x - box.min.x), y = -box.max.z + R() * (box.max.z - box.min.z);
+    const wy = wAt(x, y); if (wy === null || !free(x, y, 45)) continue;
+    if (DIRS.some(([dx, dy]) => wAt(x + dx * 28, y + dy * 28) === null)) continue;
+    const motor = R() < 0.2;
+    boats.push({ x, y, wy, a: 0.6 + (R() - 0.5) * 1.2 + (R() < 0.5 ? Math.PI : 0), L: 7 + R() * 5, sail: !motor, motor, moored: false });
+    if (i % 20 === 0) await idle();
+  }
+  const g = boatParts();
+  const hullM = new THREE.MeshStandardMaterial({ roughness: .5 });
+  const whiteM = new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: .6 });
+  const mastM = new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: .4, metalness: .3 });
+  const sailM = new THREE.MeshStandardMaterial({ color: 0xfbfaf6, roughness: .8, side: THREE.DoubleSide });
+  const nS = boats.filter(b => !b.motor).length, nM = boats.length - nS, nSail = boats.filter(b => b.sail).length;
+  const hulls = new THREE.InstancedMesh(g.hull, hullM, boats.length);
+  const cabins = new THREE.InstancedMesh(g.cabin, whiteM, Math.max(nS, 1));
+  const mcabins = new THREE.InstancedMesh(g.mcabin, whiteM, Math.max(nM, 1));
+  const masts = new THREE.InstancedMesh(g.mast, mastM, Math.max(nS, 1));
+  const sails = new THREE.InstancedMesh(g.sail, sailM, Math.max(nSail, 1));
+  const HULLC = [0xf4f2ec, 0xf4f2ec, 0xf4f2ec, 0x1f3550, 0x8f2a24, 0xdfe4e8];
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), s = new THREE.Vector3(), col = new THREE.Color();
+  let a = 0, b2 = 0, c = 0;
+  boats.forEach((b, i) => {
+    e.set(b.sail ? 0.12 : 0, b.a, 0, 'YXZ'); q.setFromEuler(e);
+    m.compose(p.set(b.x, b.wy, -b.y), q, s.setScalar(b.L));
+    hulls.setMatrixAt(i, m); hulls.setColorAt(i, col.setHex(HULLC[Math.floor(R() * HULLC.length)]));
+    if (b.motor) mcabins.setMatrixAt(b2++, m);
+    else { cabins.setMatrixAt(a, m); masts.setMatrixAt(a++, m); if (b.sail) sails.setMatrixAt(c++, m); }
+  });
+  cabins.count = masts.count = a; mcabins.count = b2; sails.count = c;
+  const grp = new THREE.Group();
+  for (const im of [hulls, cabins, mcabins, masts, sails]) { im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); im.castShadow = true; grp.add(im); }
+  if (hulls.instanceColor) hulls.instanceColor.needsUpdate = true;
+  scene.add(grp); addToLayer('l-xboat', grp);
+}
+
+/* --- krowy rasy polskiej czerwonej na łąkach wschodnich i półwyspach --- */
+function cowGeometry(grazing) {
+  const red = new THREE.Color(0x8e2c1c), dark = new THREE.Color(0x3a1f17), horn = new THREE.Color(0xe8e0cc);
+  const part = (w, h, d, x, y, z, c) => {
+    const g = new THREE.BoxGeometry(w, h, d).toNonIndexed().translate(x, y, z);
+    const n = g.attributes.position.count, a = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) c.toArray(a, i * 3);
+    g.setAttribute('color', new THREE.BufferAttribute(a, 3)); g.deleteAttribute('uv'); return g;
+  };
+  const parts = [
+    part(1.9, 0.8, 0.78, 0, 1.08, 0, red),                         // tułów
+    part(0.5, 0.42, 0.42, -0.98, 1.2, 0, red),                     // zad
+    part(0.16, 0.75, 0.16, 0.72, 0.38, 0.26, dark), part(0.16, 0.75, 0.16, 0.72, 0.38, -0.26, dark),
+    part(0.16, 0.75, 0.16, -0.75, 0.38, 0.26, dark), part(0.16, 0.75, 0.16, -0.75, 0.38, -0.26, dark),
+    part(0.08, 0.6, 0.08, -1.12, 0.95, 0, dark),                   // ogon
+  ];
+  if (grazing) parts.push(part(0.34, 0.36, 0.32, 1.12, 0.92, 0, red), part(0.36, 0.3, 0.3, 1.3, 0.55, 0, red),
+    part(0.06, 0.06, 0.4, 1.2, 0.78, 0, horn));
+  else parts.push(part(0.34, 0.36, 0.32, 1.12, 1.32, 0, red), part(0.42, 0.34, 0.34, 1.36, 1.42, 0, red),
+    part(0.06, 0.06, 0.42, 1.28, 1.62, 0, horn));
+  return mergeGeometries(parts);
+}
+async function buildCows() {
+  const terrain = allMeshes.filter(o => /^TERRAIN/.test(o.userData.top || ''));
+  // przeszkody (bez terenu - szybki test): woda, drogi, budynki, zieleń inna niż łąka
+  const cover = allMeshes.filter(o => !o.userData.concept && /^(WATER|PIER|MARINA|ROAD|PATH|PARKING|RAIL|WALL|RETAINING|HEDGE|BLD|GREEN)/.test(o.userData.top || ''));
+  const bldC = allMeshes.filter(o => /^BLD_/.test(o.userData.top || '')).map(o => { o.geometry.computeBoundingSphere(); const c = o.geometry.boundingSphere.center.clone().applyMatrix4(o.matrixWorld); return [c.x, -c.z]; });
+  const R = rng(1977);
+  const pasture = (x, y) => {
+    if (inSite(x, y) || nearTree(x, y, 2.5) || Math.hypot(x - 19, y + 52) > 640) return false;
+    if (bldC.some(([bx, by]) => Math.hypot(bx - x, by - y) < 45)) return false;
+    const c = hitAt(x, y, cover);
+    if (c && !/^GREEN_(MEADOW|WETLAND)/.test(c.object.userData.top)) return false;
+    for (const [dx, dy] of [[9, 0], [-9, 0], [0, 9], [0, -9]]) { const h = hitAt(x + dx, y + dy, cover); if (h && /^(ROAD|PATH|WATER|RAIL)/.test(h.object.userData.top)) return false; }
+    return true;
+  };
+  const ground = (x, y) => { const h = hitAt(x, y, terrain); return h ? h.point.y : null; };
+  // stada: środki na wschód od terenu inwestycji (łąki, półwyspy nad Zalewem)
+  const herds = [];
+  for (let i = 0; i < 900 && herds.length < 8; i++) {
+    const x = 40 + R() * 600, y = -470 + R() * 900;
+    if (herds.some(h => Math.hypot(h[0] - x, h[1] - y) < 110) || !pasture(x, y)) continue;
+    herds.push([x, y]);
+    if (i % 25 === 0) await idle();
+  }
+  const cows = [];
+  for (const [hx, hy] of herds) {
+    const n = 5 + Math.floor(R() * 9);
+    for (let k = 0, tries = 0; k < n && tries < 60; tries++) {
+      const ang = R() * 6.28, dist = 3 + R() * 24, x = hx + Math.cos(ang) * dist, y = hy + Math.sin(ang) * dist;
+      if (cows.some(c => Math.hypot(c.x - x, c.y - y) < 3.2) || !pasture(x, y)) continue;
+      const z = ground(x, y); if (z === null) continue;
+      cows.push({ x, y, z, a: R() * 6.28, graze: R() < 0.7, s: 0.9 + R() * 0.2 }); k++;
+      await idle();
+    }
+  }
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .85 });
+  const grp = new THREE.Group();
+  for (const graze of [true, false]) {
+    const list = cows.filter(c => c.graze === graze);
+    const im = new THREE.InstancedMesh(cowGeometry(graze), mat, Math.max(list.length, 1)); im.count = list.length;
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
+    list.forEach((c, i) => { m.compose(p.set(c.x, c.z, -c.y), q.setFromAxisAngle(Y, c.a), s.setScalar(c.s)); im.setMatrixAt(i, m); });
+    im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); im.castShadow = true; grp.add(im);
+  }
+  scene.add(grp); addToLayer('l-xcow', grp);
+  grp.userData.count = cows.length; grp.userData.herds = herds.length;
+}
+
+const treesP = fetch('models/trees.json').then(r => r.ok ? r.json() : []).catch(() => []);
+Promise.all([load('models/concept.glb', 'concept'), load('models/context.glb', 'context'), treesP]).then(([concept, context, trees]) => {
   prepare(context, false); prepare(concept, true);
   // lekko podnieś koncepcję, by nie migotała z terenem kontekstu
   concept.position.y += 0.03;
   scene.add(context, concept);
   modelReady = true;
   scene.updateMatrixWorld(true);
+  for (const o of allMeshes) { const k = matKey(origMat.get(o)); if (o.userData.concept && k && !conceptMats[k]) conceptMats[k] = origMat.get(o); }
+  buildPodiums(concept);
+  buildConnectors();
+  buildTrees(trees);
+  scene.updateMatrixWorld(true);
   fixEye();
   applyPalette();
+  buildBoats().then(buildCows).then(() => console.info('dodatki gotowe'));
+  window.__kp = { camera, controls, P, scene, look: (x, y, h, tx, ty, th) => { anim = null; camera.position.copy(P(x, y, h)); controls.target.copy(P(tx, ty, th)); controls.update(); } };
   document.getElementById('loading').hidden = true;
   applyTheme();
 }).catch(err => {
