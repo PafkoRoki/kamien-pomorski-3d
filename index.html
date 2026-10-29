@@ -180,7 +180,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 10px 0 4px
 body.nopanel .panel { display: none; }
 body.nopanel .app { grid-template-columns: 1fr; }
 /* Tryb zrzutu do wizualizacji AI */
-body.shot .panel, body.shot .hudtl, body.shot .hudtr, body.shot .cams, body.shot .compass, body.shot .card, body.shot #labels, body.shot .status { display: none !important; }
+body.shot .welcome, body.shot .panel, body.shot .hudtl, body.shot .hudtr, body.shot .cams, body.shot .compass, body.shot .card, body.shot #labels, body.shot .status { display: none !important; }
 body.shot .app { grid-template-columns: 1fr; }
 .frame { position: absolute; pointer-events: none; box-shadow: 0 0 0 9999px rgba(10, 14, 18, .5); outline: 1px solid rgba(255, 255, 255, .75); }
 .shotbar { left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: center; padding: 10px 12px; width: max-content; max-width: calc(100% - 28px); }
@@ -216,6 +216,27 @@ body.shot .app { grid-template-columns: 1fr; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } .loading .fill, .sec > summary h2::after { transition: none; } }
 
 /* ===== Wygląd techniczny (BIM / CAD) ===== */
+.help-btn { font-weight: 600; }
+.welcome { left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom, 0px)); width: min(400px, calc(100% - 28px)); padding: 12px 14px; display: grid; gap: 8px; z-index: 4; }
+.welcome b { font-size: 13px; }
+.welcome ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 12.5px; }
+.welcome li span { display: inline-block; min-width: 92px; font: 600 11px var(--f-mono); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.welcome .wrow { display: flex; justify-content: flex-end; gap: 8px; }
+.dlg-back { position: fixed; inset: 0; background: rgba(20, 24, 28, .45); display: grid; place-items: center; z-index: 50; padding: 16px; }
+.dlg { background: var(--panel); color: var(--fg); border: 1px solid var(--line-strong); box-shadow: 0 10px 40px rgba(0, 0, 0, .3); width: min(620px, 100%); max-height: min(86vh, 760px); display: flex; flex-direction: column; outline: none; }
+.dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 14px; background: var(--panel2); border-bottom: 1px solid var(--line-strong); }
+.dlg-head h2 { margin: 0; font: 600 13px var(--f-body); text-transform: none; letter-spacing: 0; }
+.dlg-x { width: 32px; height: 32px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); font-size: 18px; cursor: pointer; }
+.dlg-x:hover { background: var(--accent-soft); }
+.dlg-body { overflow: auto; padding: 14px; display: grid; gap: 14px; }
+.dlg-body h3 { margin: 0 0 6px; font: 600 11.5px var(--f-body); text-transform: uppercase; letter-spacing: .05em; }
+.kv { width: 100%; }
+.kv th { width: 34%; text-align: left; font: 600 12px var(--f-body); background: var(--panel2); vertical-align: top; }
+.kv td { text-align: left; font: 12.5px var(--f-body); }
+kbd { display: inline-block; min-width: 20px; padding: 1px 5px; border: 1px solid var(--line-strong); border-bottom-width: 2px; background: var(--panel); font: 600 11px var(--f-mono); text-align: center; color: var(--fg); }
+.lbl.click { pointer-events: auto; cursor: pointer; }
+.lbl.click:hover { background: var(--accent-soft); }
+@media (max-width: 760px) { .welcome { bottom: calc(110px + env(safe-area-inset-bottom, 0px)); } }
 .note-s { font-size: 12px; color: var(--muted); line-height: 1.4; }
 tbody tr.ro { cursor: default; }
 tbody tr.ro:hover td { background: inherit; }
@@ -410,11 +431,11 @@ body.shot .statusbar { display: none; }
     <div class="hud status" id="status" role="status" hidden></div>
     <div class="statusbar" id="statusbar"><span id="sb-hint"><span id="hint">Gotowy</span></span><span id="sb-coord">PL-2000/5 · EVRF2007 · wskaż teren</span></div>
     <div class="hud cams" role="group" aria-label="Widoki">
-      <button type="button" id="c-aerial" data-cam="aerial" aria-pressed="true">Lotniczy</button>
-      <button type="button" id="c-plan" data-cam="plan" aria-pressed="false">Plan</button>
-      <button type="button" id="c-north" data-cam="north" aria-pressed="false">Od północy</button>
+      <button type="button" id="c-aerial" data-cam="aerial" aria-pressed="true" title="Widok lotniczy na całe osiedle (1)">Lotniczy</button>
+      <button type="button" id="c-plan" data-cam="plan" aria-pressed="false" title="Rzut z góry, północ u góry (2)">Plan</button>
+      <button type="button" id="c-north" data-cam="north" aria-pressed="false" title="Widok od strony Zalewu (3)">Od północy</button>
       <label class="eye-wrap"><span class="vh">Widok z perspektywy człowieka</span>
-        <select id="eye-sel" class="view-sel eye-only" aria-label="Widok z perspektywy człowieka"></select>
+        <select id="eye-sel" class="view-sel eye-only" aria-label="Widok z perspektywy człowieka" title="Widoki z poziomu oczu – kolejny: klawisz 4 lub N"></select>
       </label>
     </div>
     <button type="button" class="hud compass" id="compass" aria-label="Ustaw północ u góry">
@@ -432,6 +453,7 @@ body.shot .statusbar { display: none; }
     </div>
     <div id="labels"></div>
     <div class="hudtr">
+      <button type="button" class="hud hbtn help-btn" id="help-open" aria-haspopup="dialog" title="Pomoc i skróty klawiszowe (?)">? Pomoc</button>
       <button type="button" class="hud hbtn" id="share" title="Kopiuj link do tego widoku (kamera, paleta, godzina, warstwy)">Link do widoku</button>
       <button type="button" class="hud hbtn shot-open" id="shot-open" title="Tryb zrzutu do wizualizacji AI (Z)">Tryb zrzutu</button>
     </div>
@@ -476,10 +498,58 @@ body.shot .statusbar { display: none; }
       </div>
     </div>
     <div class="hud toast" id="toast" role="status" hidden></div>
+    <div class="hud welcome" id="welcome" role="note" hidden>
+      <b>Jak korzystać z modelu</b>
+      <ul>
+        <li><span>Obrót</span> przeciągnij myszą lub palcem</li>
+        <li><span>Przybliżenie</span> kółko myszy lub dwa palce</li>
+        <li><span>Budynek</span> kliknij bryłę lub jej etykietę, aby zobaczyć dane</li>
+        <li><span>Widoki</span> przyciski na dole, w tym 8 widoków z poziomu oczu</li>
+      </ul>
+      <div class="wrow"><button type="button" class="btn" id="welcome-help">Więcej pomocy</button><button type="button" class="btn primary" id="welcome-ok">Rozumiem</button></div>
+    </div>
     <div class="loading" id="loading" role="status" aria-live="polite">
       <div class="box"><span id="loadmsg">Wczytywanie modelu…</span><div class="track"><div class="fill" id="loadfill"></div></div></div>
     </div>
   </main>
+</div>
+
+<div class="dlg-back" id="help-back" hidden>
+  <div class="dlg" id="help-dlg" role="dialog" aria-modal="true" aria-labelledby="help-h" tabindex="-1">
+    <div class="dlg-head"><h2 id="help-h">Pomoc – model 3D koncepcji</h2><button type="button" class="dlg-x" id="help-close" aria-label="Zamknij pomoc">×</button></div>
+    <div class="dlg-body">
+      <section>
+        <h3>Poruszanie się po modelu</h3>
+        <table class="kv">
+          <tr><th>Obrót</th><td>lewy przycisk myszy i przeciągnij · jeden palec</td></tr>
+          <tr><th>Przesuwanie</th><td>prawy przycisk myszy · dwa palce</td></tr>
+          <tr><th>Przybliżenie</th><td>kółko myszy · rozsunięcie dwóch palców</td></tr>
+          <tr><th>Budynek</th><td>kliknij bryłę lub etykietę (np. „A3”) – karta z danymi, podświetlenie w tabeli</td></tr>
+          <tr><th>Północ</th><td>kompas w prawym dolnym rogu ustawia północ u góry</td></tr>
+        </table>
+      </section>
+      <section>
+        <h3>Skróty klawiszowe</h3>
+        <table class="kv">
+          <tr><th><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></th><td>widok lotniczy · plan · od północy</td></tr>
+          <tr><th><kbd>4</kbd> / <kbd>N</kbd></th><td>kolejny widok z perspektywy człowieka</td></tr>
+          <tr><th><kbd>W</kbd> <kbd>K</kbd> <kbd>O</kbd></th><td>całość · tylko koncepcja · tylko otoczenie</td></tr>
+          <tr><th><kbd>Z</kbd></th><td>tryb zrzutu (PNG do wizualizacji)</td></tr>
+          <tr><th><kbd>Esc</kbd></th><td>zamknij okno / tryb zrzutu, odznacz budynek</td></tr>
+          <tr><th><kbd>?</kbd></th><td>ta pomoc</td></tr>
+        </table>
+      </section>
+      <section>
+        <h3>Panel z lewej</h3>
+        <table class="kv">
+          <tr><th>Projekt</th><td>bilans, PUM, miejsca postojowe, zagospodarowanie terenu, tabela budynków</td></tr>
+          <tr><th>Widok</th><td>palety kolorów i nasłonecznienie (data i godzina – cienie)</td></tr>
+          <tr><th>Warstwy</th><td>co pokazać: koncepcja, otoczenie, okna, garaże, łodzie, krowy…</td></tr>
+        </table>
+        <p class="note-s">Na dole widoku pasek stanu pokazuje współrzędne terenu pod kursorem (PL-2000/5, wysokość EVRF2007). „Link do widoku” kopiuje adres z bieżącą kamerą, paletą i godziną.</p>
+      </section>
+    </div>
+  </div>
 </div>
 
 <script type="importmap">
@@ -913,7 +983,8 @@ document.getElementById('card-x').addEventListener('click', () => select(null));
 const labels = new Map();
 const labelsEl = document.getElementById('labels');
 for (const b of BUILDINGS) {
-  const el = document.createElement('div'); el.className = 'lbl'; el.textContent = label(b.n); el.hidden = true;
+  const el = document.createElement('button'); el.type = 'button'; el.className = 'lbl click'; el.textContent = label(b.n); el.hidden = true;
+  el.title = `Budynek ${label(b.n)} – pokaż dane`; el.addEventListener('click', () => select(b.n, true));
   labelsEl.append(el); labels.set(b.n, el);
 }
 const vtmp = new THREE.Vector3();
@@ -1657,6 +1728,7 @@ Promise.all([load('models/concept.glb', 'concept'), load('models/context.glb', '
   buildBoats().then(buildCows).then(() => { st.hidden = true; console.info('dodatki gotowe'); }).catch(() => { st.hidden = true; });
   window.__kp = { camera, controls, P, scene, look: (x, y, h, tx, ty, th) => { anim = null; camera.position.copy(P(x, y, h)); controls.target.copy(P(tx, ty, th)); controls.update(); } };
   document.getElementById('loading').hidden = true;
+  showWelcomeOnce();
   view.removeAttribute('aria-busy');
   applyHash();
   applyTheme();
@@ -1886,7 +1958,7 @@ $('shot-close').addEventListener('click', exitShot);
 // skróty klawiszowe: 1–4 widoki, Z tryb zrzutu, Esc zamyka tryb / odznacza budynek
 document.addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
-  if (e.key === 'Escape') { if (shot.on) exitShot(); else if (selected) select(null); return; }
+  if (e.key === 'Escape') { if (!document.getElementById('help-back').hidden) closeHelp(); else if (shot.on) exitShot(); else if (selected) select(null); return; }
   const cam = { 1: 'aerial', 2: 'plan', 3: 'north' }[e.key];
   if (cam) { goView(cam); e.preventDefault(); return; }
   if (e.key === '4' || e.key.toLowerCase() === 'n') { nextEye(); e.preventDefault(); return; }
@@ -1894,6 +1966,7 @@ document.addEventListener('keydown', e => {
   const mode = { w: 'all', k: 'c', o: 'x' }[e.key.toLowerCase()];
   if (mode) { setMode(mode); e.preventDefault(); }
   else if (e.key === 'z' || e.key === 'Z') { enterShot(); e.preventDefault(); }
+  else if (e.key === '?' || e.key === 'h' || e.key === 'H') { openHelp(); e.preventDefault(); }
 });
 
 /* ---------- Panel: zwijanie, sekcje, podpowiedź ---------- */
@@ -1965,6 +2038,34 @@ $('shot-copy').addEventListener('click', async () => {
 
 /* ---------- Granica terenu inwestycji: linia przerywana o stałej grubości + znaczniki punktów załamania ---------- */
 const siteLineMats = [];
+
+/* ---------- Pomoc i podpowiedź powitalna ---------- */
+let helpReturn = null;
+function openHelp() {
+  helpReturn = document.activeElement;
+  document.getElementById('help-back').hidden = false;
+  document.getElementById('help-dlg').focus();
+  hideWelcome();
+}
+function closeHelp() {
+  document.getElementById('help-back').hidden = true;
+  if (helpReturn && helpReturn.focus) helpReturn.focus();
+}
+function hideWelcome() { document.getElementById('welcome').hidden = true; try { localStorage.setItem('kp3d-welcome', '1'); } catch (e) {} }
+document.getElementById('help-open').addEventListener('click', openHelp);
+document.getElementById('help-close').addEventListener('click', closeHelp);
+document.getElementById('help-back').addEventListener('click', e => { if (e.target.id === 'help-back') closeHelp(); });
+document.getElementById('help-dlg').addEventListener('keydown', e => {   // Tab nie wychodzi poza okno
+  if (e.key !== 'Tab') return;
+  const f = [...document.querySelectorAll('#help-dlg button, #help-dlg [tabindex]')].filter(x => !x.disabled);
+  const first = f[0], last = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault(); }
+  else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault(); }
+});
+document.getElementById('welcome-ok').addEventListener('click', hideWelcome);
+document.getElementById('welcome-help').addEventListener('click', openHelp);
+function showWelcomeOnce() { let seen = null; try { seen = localStorage.getItem('kp3d-welcome'); } catch (e) {} if (!seen && !shot.on) document.getElementById('welcome').hidden = false; }
+renderer.domElement.addEventListener('pointerdown', () => { if (!document.getElementById('welcome').hidden) setTimeout(hideWelcome, 2500); }, { once: true });
 
 /* ---------- Zestawienie: miejsca postojowe i PUM ---------- */
 function fillCounts(nPark) {
