@@ -123,16 +123,22 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 10px 0 4px
 .eye-only { font: 500 12px var(--f-body); color: var(--fg); background: transparent; border: 0; padding: 8px 10px; cursor: pointer; max-width: 230px; }
 .eye-only.on { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
 .eye-only option { color: #172126; background: #fff; }
-.pals { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.pal { display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 9px 10px 10px; background: transparent; color: var(--fg); border: 1px solid var(--line); cursor: pointer; font: inherit; }
+.pals { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.pal { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 2px 12px; text-align: left; padding: 8px 10px; background: transparent; color: var(--fg); border: 1px solid var(--line); cursor: pointer; font: inherit; min-height: 44px; }
 .pal:hover { border-color: var(--muted); }
-.pal[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.pal b { font-weight: 600; font-size: 13px; }
-.pal small { color: var(--muted); font-size: 11.5px; line-height: 1.3; }
-.pal .chips { display: flex; height: 10px; }
-.pal:last-child:nth-child(odd) { grid-column: span 2; }
+.pal[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.pal b { font-weight: 600; font-size: 13px; grid-column: 2; }
+.pal small { color: var(--muted); font-size: 12px; line-height: 1.3; grid-column: 2; }
+.pal .chips { display: flex; height: 14px; grid-row: 1 / span 2; outline: 1px solid var(--line); }
 .pal .chips i { flex: 1; }
 #pal-legend { margin-top: 10px; }
+/* zakładki panelu */
+.tabs { position: sticky; top: -22px; z-index: 3; display: flex; background: var(--panel); border-bottom: 1px solid var(--line); margin: -10px 0 -6px; padding-top: 6px; }
+.tabs [role="tab"] { flex: 1; font: 600 13px var(--f-body); color: var(--muted); background: transparent; border: 0; padding: 10px 6px 11px; cursor: pointer; box-shadow: inset 0 -2px 0 transparent; min-height: 44px; }
+.tabs [role="tab"]:hover { color: var(--fg); }
+.tabs [role="tab"][aria-selected="true"] { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+.tabs [role="tab"]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tabpanel { display: flex; flex-direction: column; gap: 26px; }
 .compass { right: max(14px, env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; }
 .compass svg { width: 46px; height: 46px; transition: none; }
 .card { right: max(14px, env(safe-area-inset-right, 0px)); top: 58px; width: 250px; max-width: calc(100% - 28px); padding: 14px 16px 12px; }
@@ -191,6 +197,7 @@ body.shot .app { grid-template-columns: 1fr; }
   .panel { border-right: 0; border-top: 1px solid var(--line); overflow: visible; padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); }
   .card { top: auto; bottom: 64px; width: auto; left: 14px; }
   .hint, #panel-toggle { display: none; }
+  .tabs { top: env(safe-area-inset-top, 0px); }
   .hudtl { max-width: none; }
   .cams button { padding: 7px 9px; }
 }
@@ -215,61 +222,70 @@ body.shot .app { grid-template-columns: 1fr; }
       <p class="sub">Działki <b>100/15, 100/16, 100/19</b>, obręb 0003 Kamień Pomorski. Teren inwestycji <b class="num">18 933 m²</b>, kontekst w promieniu 500 m.</p>
     </header>
 
-    <details class="sec" id="sec-pal" open>
-      <summary><h2 id="h-pal">Paleta kolorów <span>koncepcja / otoczenie</span></h2></summary>
-      <div class="pals" id="pals" role="group" aria-label="Paleta kolorów"></div>
-      <ul class="legend" id="pal-legend"></ul>
-    </details>
+    <div class="tabs" role="tablist" aria-label="Sekcje panelu">
+      <button type="button" role="tab" id="tab-proj" aria-controls="tp-proj" aria-selected="true">Projekt</button>
+      <button type="button" role="tab" id="tab-view" aria-controls="tp-view" aria-selected="false" tabindex="-1">Widok</button>
+      <button type="button" role="tab" id="tab-lay" aria-controls="tp-lay" aria-selected="false" tabindex="-1">Warstwy</button>
+    </div>
 
-    <details class="sec" id="sec-bil" open>
-      <summary><h2 id="h-bil">Bilans koncepcji</h2></summary>
-      <div class="kpis">
-        <div class="kpi"><span class="v">2 508,7<small>m²</small></span><span class="k">pow. zabudowy · 13,3%</span></div>
-        <div class="kpi"><span class="v">11 170<small>m²</small></span><span class="k">pow. całkowita (PUC)</span></div>
-        <div class="kpi"><span class="v">0,59</span><span class="k">intensywność zabudowy</span></div>
-        <div class="kpi"><span class="v" id="kpi-stalls">104</span><span class="k">miejsc postojowych</span></div>
-      </div>
-    </details>
-
-    <details class="sec" id="sec-zag" open>
-      <summary><h2 id="h-zag">Zagospodarowanie terenu <span>m² · %</span></h2></summary>
-      <div class="bar" id="bar" role="img" aria-label="Udział form zagospodarowania w powierzchni terenu"></div>
-      <ul class="legend" id="legend"></ul>
-    </details>
-
-    <details class="sec" id="sec-bud" open>
-      <summary><h2 id="h-bud">Budynki <span>kliknij, by pokazać</span></h2></summary>
-      <table>
-        <thead><tr><th>Bud.</th><th>Kond.</th><th>Zabud. m²</th><th>PUC m²</th></tr></thead>
-        <tbody id="btab"></tbody>
-        <tfoot><tr><td>Razem</td><td></td><td>2 508,7</td><td>11 170,2</td></tr></tfoot>
-      </table>
-    </details>
-
-    <details class="sec" id="sec-war" open>
-      <summary><h2 id="h-war">Warstwy</h2></summary>
-      <div class="seg mode-seg" id="mode-panel" role="group" aria-label="Co pokazać">
-        <button type="button" data-m="all" aria-pressed="true">Całość</button>
-        <button type="button" data-m="c" aria-pressed="false">Tylko koncepcja</button>
-        <button type="button" data-m="x" aria-pressed="false">Tylko otoczenie</button>
-      </div>
-      <p class="mode-note">Skróty: W całość · K koncepcja · O otoczenie. „Tylko otoczenie” pokazuje teren działki w stanie istniejącym.</p>
-      <div class="layers" id="layers"></div>
-    </details>
-
-    <details class="sec" id="sec-sun" open>
-      <summary><h2 id="h-sun">Nasłonecznienie</h2></summary>
-      <div class="sunrow">
-        <div class="seg" role="group" aria-label="Data">
-          <button type="button" id="d-0321" data-d="3-21" aria-pressed="true">21.03</button>
-          <button type="button" id="d-0621" data-d="6-21" aria-pressed="false">21.06</button>
-          <button type="button" id="d-1221" data-d="12-21" aria-pressed="false">21.12</button>
+    <div class="tabpanel" id="tp-proj" role="tabpanel" aria-labelledby="tab-proj">
+      <details class="sec" id="sec-bil" open>
+        <summary><h2 id="h-bil">Bilans koncepcji</h2></summary>
+        <div class="kpis">
+          <div class="kpi"><span class="v">2 508,7<small>m²</small></span><span class="k">pow. zabudowy · 13,3%</span></div>
+          <div class="kpi"><span class="v">11 170<small>m²</small></span><span class="k">pow. całkowita (PUC)</span></div>
+          <div class="kpi"><span class="v">0,59</span><span class="k">intensywność zabudowy</span></div>
+          <div class="kpi"><span class="v" id="kpi-stalls">104</span><span class="k">miejsc postojowych</span></div>
         </div>
-        <span class="num" id="clock" style="font-size:18px">12:00</span>
-      </div>
-      <input type="range" id="time" min="5" max="21" step="0.25" value="12" aria-label="Godzina">
-      <div class="sunread"><span>azymut <b id="az">–</b></span><span>wysokość <b id="el">–</b></span></div>
-    </details>
+      </details>
+      <details class="sec" id="sec-zag" open>
+        <summary><h2 id="h-zag">Zagospodarowanie terenu <span>m² · %</span></h2></summary>
+        <div class="bar" id="bar" role="img" aria-label="Udział form zagospodarowania w powierzchni terenu"></div>
+        <ul class="legend" id="legend"></ul>
+      </details>
+      <details class="sec" id="sec-bud" open>
+        <summary><h2 id="h-bud">Budynki <span>kliknij, by pokazać</span></h2></summary>
+        <table>
+          <thead><tr><th>Bud.</th><th>Kond.</th><th>Zabud. m²</th><th>PUC m²</th></tr></thead>
+          <tbody id="btab"></tbody>
+          <tfoot><tr><td>Razem</td><td></td><td>2 508,7</td><td>11 170,2</td></tr></tfoot>
+        </table>
+      </details>
+    </div>
+
+    <div class="tabpanel" id="tp-view" role="tabpanel" aria-labelledby="tab-view" hidden>
+      <details class="sec" id="sec-pal" open>
+        <summary><h2 id="h-pal">Paleta kolorów <span>koncepcja / otoczenie</span></h2></summary>
+        <div class="pals" id="pals" role="group" aria-label="Paleta kolorów"></div>
+        <ul class="legend" id="pal-legend"></ul>
+      </details>
+      <details class="sec" id="sec-sun" open>
+        <summary><h2 id="h-sun">Nasłonecznienie</h2></summary>
+        <div class="sunrow">
+          <div class="seg" role="group" aria-label="Data">
+            <button type="button" id="d-0321" data-d="3-21" aria-pressed="true">21.03</button>
+            <button type="button" id="d-0621" data-d="6-21" aria-pressed="false">21.06</button>
+            <button type="button" id="d-1221" data-d="12-21" aria-pressed="false">21.12</button>
+          </div>
+          <span class="num" id="clock" style="font-size:18px">12:00</span>
+        </div>
+        <input type="range" id="time" min="5" max="21" step="0.25" value="12" aria-label="Godzina">
+        <div class="sunread"><span>azymut <b id="az">–</b></span><span>wysokość <b id="el">–</b></span></div>
+      </details>
+    </div>
+
+    <div class="tabpanel" id="tp-lay" role="tabpanel" aria-labelledby="tab-lay" hidden>
+      <details class="sec" id="sec-war" open>
+        <summary><h2 id="h-war">Warstwy</h2></summary>
+        <div class="seg mode-seg" id="mode-panel" role="group" aria-label="Co pokazać">
+          <button type="button" data-m="all" aria-pressed="true">Całość</button>
+          <button type="button" data-m="c" aria-pressed="false">Tylko koncepcja</button>
+          <button type="button" data-m="x" aria-pressed="false">Tylko otoczenie</button>
+        </div>
+        <p class="mode-note">Skróty: W całość · K koncepcja · O otoczenie. „Tylko otoczenie” pokazuje teren działki w stanie istniejącym.</p>
+        <div class="layers" id="layers"></div>
+      </details>
+    </div>
 
     <footer class="src">
       <p>Układ PL-2000 strefa 5 (EPSG:2176), wysokości PL-EVRF2007-NH. Punkt 0,0 modelu: E 5 485 377, N 5 982 456.</p>
@@ -425,6 +441,31 @@ for (const b of BUILDINGS) {
   tr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(b.n, true); } });
   btab.append(tr);
 }
+
+/* ---------- Zakładki panelu (Projekt / Widok / Warstwy) ---------- */
+(function tabsInit() {
+  const tabs = [...document.querySelectorAll('.tabs [role="tab"]')];
+  function show(t, focus) {
+    for (const x of tabs) {
+      const on = x === t;
+      x.setAttribute('aria-selected', String(on)); x.tabIndex = on ? 0 : -1;
+      document.getElementById(x.getAttribute('aria-controls')).hidden = !on;
+    }
+    if (focus) t.focus();
+    try { localStorage.setItem('kp3d-tab', t.id); } catch (e) {}
+  }
+  tabs.forEach((t, i) => {
+    t.addEventListener('click', () => show(t));
+    t.addEventListener('keydown', e => {
+      const k = { ArrowRight: 1, ArrowLeft: -1, Home: -99, End: 99 }[e.key]; if (!k) return;
+      e.preventDefault();
+      const j = k === -99 ? 0 : k === 99 ? tabs.length - 1 : (i + k + tabs.length) % tabs.length;
+      show(tabs[j], true);
+    });
+  });
+  try { const id = localStorage.getItem('kp3d-tab'); const t = id && document.getElementById(id); if (t) show(t); } catch (e) {}
+  // skróty do warstw (W/K/O) i klik w budynek nie wymagają zmiany zakładki
+})();
 
 /* ---------- Scena ---------- */
 const view = document.getElementById('view');
