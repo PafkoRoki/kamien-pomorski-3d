@@ -519,6 +519,7 @@ const LAYERS = [
   { id: 'l-cland', name: 'Drogi, parkingi, chodniki, zieleń', re: /^CONCEPT3D_/, on: true },
   { id: 'l-ctree', name: 'Drzewa nowe i zachowane', re: /^C3D_TREE/, on: true },
   { id: 'l-csite', name: 'Granica terenu inwestycji', re: /^C3D_SITE/, on: true },
+  { id: 'l-cwin', name: 'Okna (wstępnie)', re: null, on: true },
   { id: 'l-cgrid', name: 'Siatka modularna 5 m', re: /^C3D_GRID/, on: false },
   { id: 'l-cgar', name: 'Garaże podziemne (prześwietlenie)', re: null, on: false },
   { g: 'Kontekst 500 m' },
@@ -581,7 +582,7 @@ const LAND = {
   TERRACE: '#c79a66', PATH_PAVERS: '#e6d9bc', PLAYGROUND: '#e5703a', PLAY_SAND: '#f2d27f',
   PLAY_MOUND_GRASS: '#58a043', LAWN: '#67b04a', GROUND: '#98c068', EXISTING_MEADOW: '#b9c98f',
   TREE_CROWN_SITE: '#2f9a58', TREE_CROWN: '#4f8f45', TREE_TRUNK: '#6b5340',
-  SITE_BOUNDARY: '#e23b26', DESIGN_GRID: '#2f6fd6', PODIUM: '#b7b0a4', DOOR: '#23262a',
+  SITE_BOUNDARY: '#e23b26', DESIGN_GRID: '#2f6fd6', PODIUM: '#b7b0a4', DOOR: '#23262a', GLASS: '#3c4b57',
 };
 const PALETTES = {
   akcent: {
@@ -609,7 +610,7 @@ const PALETTES = {
       ASPHALT: '#d6d3cd', PARKING_PAVERS: '#e2dfd9', MARKING_WHITE: '#ffffff', CURB: '#faf9f6', TERRACE: '#e8ddcc',
       PATH_PAVERS: '#f6f2ea', PLAYGROUND: '#e8d6c2', PLAY_SAND: '#efe4cc', PLAY_MOUND_GRASS: '#dfe6d4', LAWN: '#e4ead9',
       GROUND: '#eef0e8', EXISTING_MEADOW: '#efefe9', TREE_CROWN_SITE: '#bcd3b2', TREE_CROWN: '#cad8c2', TREE_TRUNK: '#c8b8a4',
-      SITE_BOUNDARY: '#c0392b', DESIGN_GRID: '#7f9cc4', PODIUM: '#c49a6d', DOOR: '#7a5a3c' },
+      SITE_BOUNDARY: '#c0392b', DESIGN_GRID: '#7f9cc4', PODIUM: '#c49a6d', DOOR: '#7a5a3c', GLASS: '#a67d55' },
     edge: '#7a5a3c', edgeOp: .55, sel: 0x1d5c8f,
     legend: [['Budynki projektowane', '#dcb68c'], ['Zagospodarowanie', '#f6f2ea'], ['Otoczenie', '#f3f1ed']],
   },
@@ -620,7 +621,7 @@ const PALETTES = {
     concept: { ...LAND, FACADE: '#efebe4', SLAB_BANDS: '#d2cbbf', PLINTH: '#8c857b', ROOF: '#6b6f74', PARAPET: '#dcd6cc', PODIUM: '#a49d92',
       ASPHALT: '#55585c', PARKING_PAVERS: '#9a9a96', MARKING_WHITE: '#f2f2ee', CURB: '#d6d4cf', TERRACE: '#a9825c', PATH_PAVERS: '#d8d0bf',
       PLAYGROUND: '#c9714a', PLAY_SAND: '#e3cf98', PLAY_MOUND_GRASS: '#6f9f4f', LAWN: '#6f9f4f', GROUND: '#7fa45a', EXISTING_MEADOW: '#93a865',
-      TREE_CROWN_SITE: '#4f7f3e', TREE_CROWN: '#567f43', TREE_TRUNK: '#5e4a3a', DOOR: '#2b2d30' },
+      TREE_CROWN_SITE: '#4f7f3e', TREE_CROWN: '#567f43', TREE_TRUNK: '#5e4a3a', DOOR: '#2b2d30', GLASS: '#4b5f6e' },
     edge: '#000000', edgeOp: 0, sel: 0x1d5c8f,
     legend: [['Naturalne kolory koncepcji i otoczenia, bez konturów – dobry podkład do wizualizacji AI', '#6f9f4f']],
   },
@@ -631,7 +632,7 @@ const PALETTES = {
     concept: { ...LAND, FACADE: '#fff4e2', SLAB_BANDS: '#f0d6ad', PLINTH: '#c98f63', ROOF: '#4f8f9a', PARAPET: '#fbe9cf', PODIUM: '#d8b48a',
       ASPHALT: '#5a5f6b', PARKING_PAVERS: '#a7a9b3', MARKING_WHITE: '#ffffff', CURB: '#ffffff', TERRACE: '#d79b5f', PATH_PAVERS: '#f3dfb4',
       PLAYGROUND: '#ff8a5c', PLAY_SAND: '#ffe08a', PLAY_MOUND_GRASS: '#7cc95a', LAWN: '#7cc95a', GROUND: '#8fd36a', EXISTING_MEADOW: '#a8d86e',
-      TREE_CROWN_SITE: '#3fae4f', TREE_CROWN: '#4fa34a', TREE_TRUNK: '#7a5136', DOOR: '#3a3f4a', SITE_BOUNDARY: '#ff5d73' },
+      TREE_CROWN_SITE: '#3fae4f', TREE_CROWN: '#4fa34a', TREE_TRUNK: '#7a5136', DOOR: '#3a3f4a', SITE_BOUNDARY: '#ff5d73', GLASS: '#5f97c2' },
     edge: '#000000', edgeOp: 0, sel: 0xff5d73,
     legend: [['Cel-shading z czarnymi konturami i nasyconymi kolorami – styl animacji', '#7cc95a']],
   },
@@ -1029,6 +1030,50 @@ function fixRoofC(concept) {
   rim.userData.bld = 'C'; pickables.push(rim); bldMeshes.get('C')?.push(rim);
 }
 
+/* --- wstępne okna na elewacjach budynków projektowanych ---
+   obrys z koncepcji; na każdej kondygnacji (±0,00 + n·3,20 m) okna 1,4 × 1,6 m, parapet 0,9 m,
+   moduł ok. 3,0 m wzdłuż każdego ciągu elewacji (łuk budynku C traktowany jako jeden ciąg) */
+const RINGS = {"B":[[-39.51,16.35],[-38.42,16.97],[-40.28,20.23],[-39.19,20.84],[-42.9,27.36],[-45.07,26.12],[-45.69,27.21],[-47.86,25.97],[-49.72,29.23],[-58.41,24.29],[-54.7,17.77],[-55.79,17.15],[-52.7,11.72],[-51.61,12.34],[-49.75,9.08],[-38.89,15.26]],"A4":[[35.18,-8.74],[36.27,-8.12],[34.41,-4.87],[35.5,-4.25],[31.79,2.27],[29.61,1.03],[29.0,2.12],[26.82,0.88],[24.97,4.14],[16.28,-0.8],[19.99,-7.32],[18.9,-7.94],[21.99,-13.37],[23.08,-12.75],[24.93,-16.01],[35.8,-9.83]],"A3":[[53.73,-41.33],[54.82,-40.72],[52.96,-37.46],[54.05,-36.84],[50.34,-30.32],[48.16,-31.56],[47.55,-30.47],[45.37,-31.71],[43.52,-28.45],[34.83,-33.39],[38.54,-39.91],[37.45,-40.53],[40.54,-45.96],[41.63,-45.34],[43.48,-48.6],[54.35,-42.42]],"A2":[[72.28,-73.92],[73.36,-73.31],[71.51,-70.05],[72.6,-69.43],[68.89,-62.91],[66.71,-64.15],[66.09,-63.06],[63.92,-64.3],[62.07,-61.04],[53.38,-65.98],[57.09,-72.5],[56.0,-73.12],[59.09,-78.55],[60.18,-77.94],[62.03,-81.19],[72.9,-75.01]],"A1":[[90.83,-106.52],[91.91,-105.9],[90.06,-102.64],[91.15,-102.02],[87.44,-95.5],[85.26,-96.74],[84.64,-95.65],[82.47,-96.89],[80.62,-93.63],[71.93,-98.58],[75.64,-105.09],[74.55,-105.71],[77.64,-111.14],[78.73,-110.53],[80.58,-113.78],[91.45,-107.6]],"D_N":[[-68.69,54.56],[-66.21,54.31],[-64.35,72.97],[-70.57,73.58],[-70.7,72.34],[-75.67,72.83],[-75.8,71.59],[-79.53,71.96],[-79.9,68.23],[-78.65,68.11],[-79.15,63.13],[-81.64,63.38],[-82.01,59.65],[-80.76,59.52],[-81.13,55.79],[-79.89,55.67],[-80.01,54.42],[-68.82,53.31]],"D_S":[[-73.78,41.24],[-70.05,40.87],[-69.93,42.12],[-67.44,41.87],[-66.33,53.06],[-81.26,54.55],[-81.87,48.33],[-80.63,48.2],[-81.25,41.98],[-78.76,41.74],[-78.64,42.98],[-73.66,42.49]],"C":[[-26.96,73.28],[-26.82,73.26],[-25.93,73.16],[-25.66,73.12],[-24.78,72.98],[-24.51,72.93],[-23.64,72.75],[-23.37,72.69],[-22.5,72.48],[-22.23,72.41],[-21.37,72.17],[-21.11,72.09],[-20.26,71.81],[-20.0,71.72],[-19.17,71.4],[-18.91,71.3],[-18.09,70.96],[-17.84,70.85],[-17.03,70.47],[-16.78,70.35],[-15.99,69.94],[-15.75,69.81],[-14.97,69.36],[-14.73,69.22],[-13.97,68.75],[-13.74,68.6],[-13.0,68.1],[-12.78,67.94],[-12.06,67.41],[-11.84,67.25],[-11.15,66.69],[-10.94,66.51],[-10.26,65.92],[-10.06,65.74],[-9.41,65.13],[-9.21,64.94],[-8.59,64.3],[-8.4,64.1],[-7.8,63.44],[-7.62,63.23],[-7.04,62.54],[-6.87,62.33],[-6.33,61.62],[-6.16,61.4],[-5.65,60.67],[-5.49,60.45],[-5.0,59.7],[-4.86,59.46],[-4.4,58.69],[-4.33,58.58],[7.22,38.27],[-4.73,31.47],[-16.25,51.72],[-16.6,52.31],[-16.94,52.83],[-17.3,53.34],[-17.68,53.83],[-18.08,54.3],[-18.5,54.76],[-18.93,55.21],[-19.38,55.63],[-19.85,56.04],[-20.34,56.43],[-20.84,56.8],[-21.35,57.15],[-21.88,57.48],[-22.42,57.78],[-22.97,58.07],[-23.53,58.33],[-24.11,58.57],[-24.69,58.79],[-25.28,58.98],[-25.88,59.15],[-26.48,59.3],[-27.09,59.42],[-27.7,59.52],[-28.39,59.6],[-45.75,61.33],[-44.39,75.01]]};
+function buildWindows() {
+  const W = 1.4, H = 1.6, SILL = 0.9, MOD = 3.0, MARGIN = 0.9, OFF = 0.05, TURN = 0.52;
+  const pos = [];
+  const pointAt = (run, s) => {
+    for (const g of run) { if (s <= g.L) return [g.p[0] + g.dx * s, g.p[1] + g.dy * s]; s -= g.L; }
+    const g = run[run.length - 1]; return [g.q[0], g.q[1]];
+  };
+  const turn = (a, b) => Math.acos(Math.max(-1, Math.min(1, a.dx * b.dx + a.dy * b.dy)));
+  const quad = (a, b, z0, z1) => {
+    const v = [P(a[0], a[1], z0), P(b[0], b[1], z0), P(b[0], b[1], z1), P(a[0], a[1], z1)];
+    for (const i of [0, 1, 2, 0, 2, 3]) pos.push(v[i].x, v[i].y, v[i].z);
+  };
+  for (const b of BUILDINGS) {
+    let ring = RINGS[b.n]; if (!ring) continue;
+    let a2 = 0; ring.forEach((p, i) => { const q = ring[(i + 1) % ring.length]; a2 += p[0] * q[1] - q[0] * p[1]; });
+    if (a2 < 0) ring = ring.slice().reverse();                 // obrys przeciwnie do ruchu wskazówek zegara
+    const n = ring.length;
+    const segs = ring.map((p, i) => { const q = ring[(i + 1) % n], dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy); return { p, q, L, dx: dx / L, dy: dy / L }; }).filter(g => g.L > 0.01);
+    let start = segs.findIndex((g, i) => turn(segs[(i - 1 + segs.length) % segs.length], g) > TURN); if (start < 0) start = 0;
+    const runs = []; let cur = [];
+    for (let k = 0; k < segs.length; k++) { const g = segs[(start + k) % segs.length]; if (cur.length && turn(cur[cur.length - 1], g) > TURN) { runs.push(cur); cur = []; } cur.push(g); }
+    if (cur.length) runs.push(cur);
+    for (const run of runs) {
+      const L = run.reduce((a, g) => a + g.L, 0), cnt = Math.floor((L - 2 * MARGIN + (MOD - W)) / MOD);
+      if (cnt < 1) continue;
+      const s0 = (L - (cnt * MOD - (MOD - W))) / 2 + W / 2;
+      for (let w = 0; w < cnt; w++) {
+        const A = pointAt(run, s0 + w * MOD - W / 2), B = pointAt(run, s0 + w * MOD + W / 2);
+        const tx = B[0] - A[0], ty = B[1] - A[1], tl = Math.hypot(tx, ty) || 1, nx = ty / tl, ny = -tx / tl;   // normalna na zewnątrz
+        const a = [A[0] + nx * OFF, A[1] + ny * OFF], c = [B[0] + nx * OFF, B[1] + ny * OFF];
+        for (let f = 0; f < b.f; f++) { const z0 = b.pm + f * 3.2 + SILL; quad(a, c, z0, z0 + H); }
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+  const m = addConceptMesh(g, 'GLASS', '#3c4b57', { kind: 'glass', side: true, layer: 'l-cwin' });
+  m.castShadow = false;
+  return pos.length / 18;
+}
+
 function buildConnectors() {
   const conceptGround = allMeshes.filter(o => o.userData.concept && !o.userData.extra && /ground|land/.test(o.userData.kind));
   const ctxGround = allMeshes.filter(o => !o.userData.concept && /^(TERRAIN|ROAD|PATH|PARKING|GREEN)/.test(o.userData.top || ''));
@@ -1298,6 +1343,7 @@ Promise.all([load('models/concept.glb', 'concept'), load('models/context.glb', '
   for (const o of allMeshes) if (!o.isInstancedMesh && o.geometry.index && /ground|land|water|ctx/.test(o.userData.kind || '') && !o.geometry.boundsTree) { try { o.geometry.computeBoundsTree(); } catch (e) {} }
   fixRoofC(concept);
   buildPodiums(concept);
+  buildWindows();
   buildConnectors();
   buildTrees(trees);
   scene.updateMatrixWorld(true);
