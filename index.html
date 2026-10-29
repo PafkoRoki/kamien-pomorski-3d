@@ -7,38 +7,40 @@
 <title>Kamień Pomorski dz. 100/15</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
-/* Layout: plansza-legenda po lewej (jak opis na arkuszu koncepcji), model 3D wypełnia resztę ekranu; na telefonie model u góry, legenda pod nim. */
+/* Layout: panel właściwości po lewej (jak w programach BIM), widok 3D z paskiem narzędzi i paskiem stanu; na telefonie model u góry. */
 :root {
-  --bg: #e9eef0;
-  --panel: #f7f9f9;
-  --fg: #172126;
-  --muted: #59666e;
-  --line: #d2dade;
-  --accent: #1d5c8f;
-  --accent-soft: #dce8f2;
-  --site: #d23a2a;
-  --sky: #dfe6ea;
-  --hud: rgba(247, 249, 249, .92);
+  --bg: #d9dde1;
+  --panel: #f4f5f6;
+  --panel2: #e4e7ea;
+  --fg: #1c2024;
+  --muted: #5a646d;
+  --line: #c4cad0;
+  --line-strong: #9fa8b1;
+  --accent: #0a7cc4;
+  --accent-soft: #d6ebf8;
+  --site: #e0242a;
+  --sky: #cfd8e0;
+  --hud: rgba(244, 245, 246, .96);
   --c-bld: #9aa4ab; --c-road: #3d4145; --c-park: #7c7f82; --c-path: #c9c2b2; --c-terr: #b5a28a;
   --c-green: #6f9a55; --c-play: #c7784a; --c-out: #b7c39b;
-  --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
-  --f-body: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-display: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #101619; --panel: #151d21; --fg: #e3e9eb; --muted: #8e9ba2; --line: #27333a;
-    --accent: #79afd9; --accent-soft: #1d3142; --site: #f0705c; --sky: #19242a; --hud: rgba(21, 29, 33, .92);
+    --bg: #1d2125; --panel: #2a2f34; --panel2: #343a40; --fg: #e6e9ec; --muted: #9ba5ae; --line: #424950; --line-strong: #59616a;
+    --accent: #3aaef0; --accent-soft: #1d3a4d; --site: #ff5a52; --sky: #343a40; --hud: rgba(42, 47, 52, .96);
     --c-bld: #8a959c; --c-road: #565b60; --c-park: #6e7275; --c-path: #a39d90; --c-terr: #9c8a74;
     --c-green: #6b9452; --c-play: #c27650; --c-out: #8f9b78;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #101619; --panel: #151d21; --fg: #e3e9eb; --muted: #8e9ba2; --line: #27333a;
-  --accent: #79afd9; --accent-soft: #1d3142; --site: #f0705c; --sky: #19242a; --hud: rgba(21, 29, 33, .92);
+  --bg: #1d2125; --panel: #2a2f34; --panel2: #343a40; --fg: #e6e9ec; --muted: #9ba5ae; --line: #424950; --line-strong: #59616a;
+  --accent: #3aaef0; --accent-soft: #1d3a4d; --site: #ff5a52; --sky: #343a40; --hud: rgba(42, 47, 52, .96);
   --c-bld: #8a959c; --c-road: #565b60; --c-park: #6e7275; --c-path: #a39d90; --c-terr: #9c8a74;
   --c-green: #6b9452; --c-play: #c27650; --c-out: #8f9b78;
   color-scheme: dark;
@@ -211,6 +213,92 @@ body.shot .app { grid-template-columns: 1fr; }
   .card .x { width: 44px; height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } .loading .fill, .sec > summary h2::after { transition: none; } }
+
+/* ===== Wygląd techniczny (BIM / CAD) ===== */
+body { font-size: 13px; }
+.panel { padding: 14px 14px 18px max(14px, env(safe-area-inset-left, 0px)); gap: 12px; border-right: 1px solid var(--line-strong); }
+.eyebrow { font: 500 10.5px/1.3 var(--f-mono); letter-spacing: .06em; }
+h1 { font: 600 20px/1.15 var(--f-display); font-stretch: normal; letter-spacing: 0; margin: 4px 0 6px; }
+.sub { font-size: 12.5px; }
+/* grupy jak w palecie Właściwości */
+.sec { border: 1px solid var(--line); background: var(--panel); }
+.sec > summary { background: var(--panel2); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.sec:not([open]) > summary { border-bottom: 0; }
+.sec[open] > summary { margin-bottom: 0; }
+.sec > summary h2 { font: 600 11px/1.2 var(--f-body); letter-spacing: .05em; color: var(--fg); }
+.sec > summary h2 span { font: 400 11px var(--f-mono); letter-spacing: 0; }
+.sec > :not(summary) { margin: 8px; }
+.sec > table { width: calc(100% - 16px); }
+/* zakładki jak karty w programie */
+.tabs { background: var(--panel); border-bottom: 1px solid var(--line-strong); margin: 0 -14px; padding: 6px 14px 0; gap: 2px; top: -14px; }
+.tabs [role="tab"] { flex: 0 1 auto; font: 500 12px var(--f-body); color: var(--fg); padding: 6px 14px; min-height: 30px; background: var(--panel2); border: 1px solid var(--line); border-bottom: 0; box-shadow: none; margin-bottom: -1px; }
+.tabs [role="tab"]:hover { background: var(--accent-soft); }
+.tabs [role="tab"][aria-selected="true"] { background: var(--panel); color: var(--fg); border-color: var(--line-strong); box-shadow: inset 0 2px 0 var(--accent); }
+/* wartości jak w polach właściwości */
+.kpis { border: 0; background: var(--line); gap: 1px; }
+.kpi { padding: 7px 9px; }
+.kpi .v { font: 500 16px/1.1 var(--f-mono); }
+.kpi .k { font-size: 11.5px; }
+/* zestawienia jak tabele w programie */
+table { font-size: 12px; border: 1px solid var(--line); }
+th { background: var(--panel2); font: 600 10.5px var(--f-mono); color: var(--fg); border: 1px solid var(--line); padding: 4px 6px; }
+td { border: 1px solid var(--line); padding: 4px 6px; }
+tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--panel2) 35%, var(--panel)); }
+tbody tr:hover td, tbody tr.sel td { background: var(--accent-soft); }
+tbody tr.sel td { color: var(--fg); }
+tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.legend li { font-size: 12px; }
+/* przyciski: płaskie, z obramowaniem */
+.seg { border-color: var(--line-strong); background: var(--panel); }
+.seg button { font: 500 11.5px var(--f-body); padding: 5px 9px; }
+.seg button + button { border-left-color: var(--line-strong); }
+.seg button:hover { background: var(--accent-soft); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.pal { border-color: var(--line); padding: 6px 8px; min-height: 40px; }
+.pal[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); background: var(--accent-soft); }
+.layers label { font-size: 12.5px; padding: 3px 0; }
+.layers .grp { font: 600 10.5px var(--f-body); letter-spacing: .05em; }
+/* pasek narzędzi i panele nad modelem */
+.hud { background: var(--hud); border: 1px solid var(--line-strong); border-radius: 2px; box-shadow: 0 1px 3px rgba(0, 0, 0, .14); backdrop-filter: none; }
+.hbtn { font: 500 12px var(--f-body); padding: 6px 11px; min-height: 30px; }
+.hbtn:hover { background: var(--accent-soft); color: var(--fg); }
+.cams button, .eye-only { font: 500 12px var(--f-body); padding: 6px 11px; }
+.cams button:hover { background: var(--accent-soft); color: var(--fg); }
+.cams button[aria-pressed="true"], .eye-only.on { color: #fff; background: var(--accent); box-shadow: none; }
+.card { border-radius: 2px; padding: 0; }
+.card .eyebrow { padding: 7px 10px 0; }
+.card h3 { font: 600 16px var(--f-display); margin: 2px 10px 8px; }
+.card dl { gap: 0; border-top: 1px solid var(--line); }
+.card dt, .card dd { padding: 4px 10px; border-bottom: 1px solid var(--line); font-size: 12px; }
+.card dt { background: var(--panel2); }
+.card .note { padding: 6px 10px 8px; margin: 0; }
+.card .x { top: 2px; right: 2px; }
+.lbl { font: 600 11px var(--f-mono); background: #fff; color: #1c2024; border: 1px solid #1c2024; border-radius: 0; padding: 0 5px; box-shadow: 0 1px 0 rgba(0, 0, 0, .25); }
+.lbl.sel { background: var(--accent); color: #fff; border-color: var(--accent); }
+.compass { border-radius: 2px; width: 52px; height: 52px; }
+/* pasek stanu (dół widoku) */
+.statusbar { position: absolute; left: 0; right: 0; bottom: 0; height: calc(26px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 0 max(10px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) 10px; background: var(--panel2); border-top: 1px solid var(--line-strong);
+  font: 11.5px var(--f-mono); color: var(--muted); white-space: nowrap; overflow: hidden; z-index: 2; }
+.statusbar b { color: var(--fg); font-weight: 500; }
+#sb-hint { overflow: hidden; text-overflow: ellipsis; }
+.cams { bottom: calc(36px + env(safe-area-inset-bottom, 0px)); }
+.compass { bottom: calc(36px + env(safe-area-inset-bottom, 0px)); }
+.status { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+body.shot .statusbar { display: none; }
+/* paski przewijania – wąskie, techniczne */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) var(--panel2); }
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: var(--panel2); border-left: 1px solid var(--line); }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border: 3px solid var(--panel2); border-radius: 0; min-height: 40px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+::-webkit-scrollbar-corner { background: var(--panel2); }
+@media (max-width: 760px) {
+  .card { bottom: 74px; }
+  .tabs { top: env(safe-area-inset-top, 0px); }
+  #sb-hint { display: none; }
+  .statusbar { justify-content: flex-end; }
+}
 </style>
 </head>
 <body>
@@ -301,9 +389,9 @@ body.shot .app { grid-template-columns: 1fr; }
         <button type="button" data-m="c" aria-pressed="false" title="Tylko koncepcja (K)">Koncepcja</button>
         <button type="button" data-m="x" aria-pressed="false" title="Tylko otoczenie (O)">Otoczenie</button>
       </div>
-      <div class="hud hint" id="hint">Obrót: lewy przycisk · przesuw: prawy · zoom: kółko</div>
     </div>
     <div class="hud status" id="status" role="status" hidden></div>
+    <div class="statusbar" id="statusbar"><span id="sb-hint"><span id="hint">Gotowy</span></span><span id="sb-coord">PL-2000/5 · EVRF2007 · wskaż teren</span></div>
     <div class="hud cams" role="group" aria-label="Widoki">
       <button type="button" id="c-aerial" data-cam="aerial" aria-pressed="true">Lotniczy</button>
       <button type="button" id="c-plan" data-cam="plan" aria-pressed="false">Plan</button>
@@ -391,6 +479,9 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { TessellateModifier } from 'three/addons/modifiers/TessellateModifier.js';
+import { Line2 } from 'three/addons/lines/Line2.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { computeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 // szybkie raycasty (BVH) – rozmieszczanie krów, łodzi i łącznic po terenie
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -1494,6 +1585,7 @@ Promise.all([load('models/concept.glb', 'concept'), load('models/context.glb', '
   buildHedges();
   buildConnectors();
   buildNewRoads();
+  buildSiteLine();
   buildTrees(trees);
   scene.updateMatrixWorld(true);
   fixEye();
@@ -1810,12 +1902,65 @@ $('shot-copy').addEventListener('click', async () => {
 });
 
 
+/* ---------- Granica terenu inwestycji: linia przerywana o stałej grubości + znaczniki punktów załamania ---------- */
+const siteLineMats = [];
+function buildSiteLine() {
+  const pts = [];
+  for (let i = 0; i < N_RING - 1; i++) {
+    const [ax, ay] = SITE_RING[i], [bx, by] = SITE_RING[i + 1], L = Math.hypot(bx - ax, by - ay), n = Math.max(1, Math.ceil(L / 1.5));
+    for (let k = 0; k < n; k++) { const x = ax + (bx - ax) * k / n, y = ay + (by - ay) * k / n; pts.push(x, groundSmart(x, y) + 0.45, -y); }
+  }
+  pts.push(pts[0], pts[1], pts[2]);
+  const geo = new LineGeometry(); geo.setPositions(pts);
+  const w = view.clientWidth, h = view.clientHeight;
+  // linia rozgraniczająca: biała obwódka + ciągła czerwień + ciemniejsze kreski (wzór kreska-przerwa)
+  // wszystkie warstwy linii w jednym przebiegu (przezroczyste), kolejność: obwódka → czerwień → kreski
+  const lm = o => new LineMaterial({ transparent: true, depthTest: true, depthWrite: false, ...o });
+  const halo = lm({ color: 0xffffff, linewidth: 9, opacity: 0.85 });
+  const base = lm({ color: 0xe0242a, linewidth: 4.5 });
+  const dash = lm({ color: 0x7a0c10, linewidth: 4.5, dashed: true, dashSize: 7, gapSize: 3 });
+  for (const m of [halo, base, dash]) { m.resolution.set(w, h); siteLineMats.push(m); }
+  const lines = [new Line2(geo, halo), new Line2(geo, base), new Line2(geo, dash)];
+  lines[2].computeLineDistances();
+  lines.forEach((l, i) => { l.renderOrder = 30 + i; l.frustumCulled = false; l.raycast = () => {}; scene.add(l); addToLayer('l-csite', l); });
+  // znaczniki punktów granicznych (P1–P37): słupki 2,4 m
+  const post = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.3, 2.4, 10).translate(0, 1.2, 0),
+    new THREE.MeshStandardMaterial({ color: 0xe0242a, roughness: .6 }), N_RING - 1);
+  const m4 = new THREE.Matrix4();
+  for (let i = 0; i < N_RING - 1; i++) { const [x, y] = SITE_RING[i]; m4.makeTranslation(x, groundSmart(x, y), -y); post.setMatrixAt(i, m4); }
+  post.instanceMatrix.needsUpdate = true; post.computeBoundingSphere(); post.castShadow = true;
+  scene.add(post); addToLayer('l-csite', post);
+}
+
+/* ---------- Pasek stanu: współrzędne terenu pod kursorem (PL-2000/5, EVRF2007) ---------- */
+const sbCoord = document.getElementById('sb-coord'), sbHint = document.getElementById('hint');
+const sbDefault = () => sbHint.dataset.def || sbHint.textContent;
+let sbT = 0, sbTargets = null;
+const fmtN = (v, d = 2) => v.toLocaleString('pl-PL', { minimumFractionDigits: d, maximumFractionDigits: d });
+renderer.domElement.addEventListener('pointermove', e => {
+  if (!modelReady || e.buttons || performance.now() - sbT < 70) return;
+  sbT = performance.now();
+  if (!sbTargets) sbTargets = allMeshes.filter(o => !o.isInstancedMesh);
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObjects(sbTargets.filter(isVisible), false)[0];
+  if (!hit) { sbCoord.textContent = 'PL-2000/5 · EVRF2007 · poza modelem'; return; }
+  const p = hit.point, E = p.x + 5485377, N = -p.z + 5982456;
+  sbCoord.innerHTML = `E <b>${fmtN(E)}</b>  N <b>${fmtN(N)}</b>  H <b>${fmtN(p.y)}</b> m`;
+  const b = hit.object.userData.bld;
+  if (!sbHint.dataset.def) sbHint.dataset.def = sbHint.textContent;
+  sbHint.textContent = b ? `Budynek ${b.replace('_', '-')} – kliknij, aby zobaczyć dane` : sbHint.dataset.def;
+});
+renderer.domElement.addEventListener('pointerleave', () => { if (sbHint.dataset.def) sbHint.textContent = sbHint.dataset.def; });
+
 /* ---------- Pętla ---------- */
 function draw() { renderer.render(scene, camera); }
 const needle = document.getElementById('needle');
 function resize() {
   const w = view.clientWidth, h = view.clientHeight;
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  for (const m of siteLineMats) m.resolution.set(w, h);
   if (shot.on) updateFrame();
 }
 new ResizeObserver(resize).observe(view); resize();
