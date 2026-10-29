@@ -4,7 +4,8 @@ Interaktywna przeglądarka 3D koncepcji zagospodarowania działek 100/15, 100/16
 
 - obrót / przesuw / zoom, gotowe widoki (lotniczy, plan, od północy, z wjazdu)
 - karty budynków (kondygnacje, pow. zabudowy, PUC, rzędne)
-- bilans terenu, warstwy, tryb makiety
+- palety kolorów wyróżniające koncepcję na tle otoczenia: Akcent, Typy budynków, Makieta, Oryginał
+- bilans terenu, warstwy
 - symulacja nasłonecznienia dla 21.03, 21.06, 21.12
 
 Strona jest statyczna (three.js z CDN), modele w `models/` to GLB skompresowane meshopt.

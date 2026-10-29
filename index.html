@@ -112,13 +112,18 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 10px 0 4px
 .cams button + button { border-left: 1px solid var(--line); }
 .cams button:hover { color: var(--accent); }
 .cams button[aria-pressed="true"] { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
-.modes { right: max(14px, env(safe-area-inset-right, 0px)); top: 14px; display: flex; }
-.modes button { font: 500 12px var(--f-body); background: transparent; color: var(--fg); border: 0; padding: 7px 11px; cursor: pointer; }
-.modes button + button { border-left: 1px solid var(--line); }
-.modes button[aria-pressed="true"] { background: var(--accent); color: var(--panel); }
+.pals { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pal { display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 9px 10px 10px; background: transparent; color: var(--fg); border: 1px solid var(--line); cursor: pointer; font: inherit; }
+.pal:hover { border-color: var(--muted); }
+.pal[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.pal b { font-weight: 600; font-size: 13px; }
+.pal small { color: var(--muted); font-size: 11.5px; line-height: 1.3; }
+.pal .chips { display: flex; height: 10px; }
+.pal .chips i { flex: 1; }
+#pal-legend { margin-top: 10px; }
 .compass { right: max(14px, env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; }
 .compass svg { width: 46px; height: 46px; transition: none; }
-.card { right: max(14px, env(safe-area-inset-right, 0px)); top: 58px; width: 250px; max-width: calc(100% - 28px); padding: 14px 16px 12px; }
+.card { right: max(14px, env(safe-area-inset-right, 0px)); top: 14px; width: 250px; max-width: calc(100% - 28px); padding: 14px 16px 12px; }
 .card h3 { font: 650 22px/1 var(--f-display); font-stretch: 78%; margin: 2px 0 10px; }
 .card dl { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; font-size: 13px; }
 .card dt { color: var(--muted); }
@@ -151,6 +156,12 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 10px 0 4px
       <h1>Kamień Pomorski, dz. 100/15</h1>
       <p class="sub">Działki <b>100/15, 100/16, 100/19</b>, obręb 0003 Kamień Pomorski. Teren inwestycji <b class="num">18 933 m²</b>, kontekst w promieniu 500 m.</p>
     </header>
+
+    <section aria-labelledby="h-pal">
+      <h2 id="h-pal">Paleta kolorów <span>koncepcja / otoczenie</span></h2>
+      <div class="pals" id="pals" role="group" aria-label="Paleta kolorów"></div>
+      <ul class="legend" id="pal-legend"></ul>
+    </section>
 
     <section aria-labelledby="h-bil">
       <h2 id="h-bil">Bilans koncepcji</h2>
@@ -204,10 +215,6 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 10px 0 4px
 
   <main class="view" id="view">
     <div class="hud hint">Obrót: lewy przycisk · przesuw: prawy · zoom: kółko</div>
-    <div class="hud modes" role="group" aria-label="Styl modelu">
-      <button type="button" id="m-color" aria-pressed="true">Kolor</button>
-      <button type="button" id="m-clay" aria-pressed="false">Makieta</button>
-    </div>
     <div class="hud cams" role="group" aria-label="Widoki">
       <button type="button" id="c-aerial" data-cam="aerial" aria-pressed="true">Lotniczy</button>
       <button type="button" id="c-plan" data-cam="plan" aria-pressed="false">Plan</button>
@@ -293,7 +300,8 @@ for (const b of BUILDINGS) {
 const view = document.getElementById('view');
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// lekki supersampling na ekranach 1x: gładsze krawędzie budynków i linii
+renderer.setPixelRatio(Math.min(Math.max(devicePixelRatio, 1.5), 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -319,7 +327,19 @@ const sun = new THREE.DirectionalLight(0xfff3e2, 2.6);
 sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096);
 const sc = sun.shadow.camera; sc.left = -230; sc.right = 230; sc.top = 230; sc.bottom = -230; sc.near = 10; sc.far = 1400;
-sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.35;
+sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.25;
+// obszar cieni podąża za kamerą: im bliżej, tym ostrzejsze (gładsze) krawędzie cieni
+const sunDir = new THREE.Vector3(0, 1, 0);
+let shadowHalf = 230;
+function placeSun() {
+  const d = camera.position.distanceTo(controls.target);
+  const half = THREE.MathUtils.clamp(d * 0.55, 60, 260);
+  if (Math.abs(half - shadowHalf) > 1) {
+    shadowHalf = half; sc.left = sc.bottom = -half; sc.right = sc.top = half; sc.updateProjectionMatrix();
+  }
+  sun.target.position.copy(controls.target);
+  sun.position.copy(controls.target).addScaledVector(sunDir, 600);
+}
 sun.target.position.copy(CENTER);
 scene.add(sun, sun.target);
 
@@ -327,7 +347,6 @@ function applyTheme() {
   const sky = new THREE.Color(css('--sky'));
   scene.background = sky;
   scene.fog = new THREE.Fog(sky, 700, 1700);
-  if (clayMode) applyMode();
 }
 const mq = matchMedia('(prefers-color-scheme: dark)');
 mq.addEventListener?.('change', applyTheme);
@@ -360,15 +379,141 @@ for (const l of LAYERS) {
 }
 
 /* ---------- Materiały ---------- */
-const SMOOTH = /TERRAIN|GROUND|GREEN|zielen|MOUND|WATER|MEADOW|TREE|TREES/;
 const origMat = new Map();
-const clayCtx = new THREE.MeshStandardMaterial({ color: 0xeceae6, roughness: 0.95, flatShading: true });
-const clayGround = new THREE.MeshStandardMaterial({ color: 0xe4e2dd, roughness: 1 });
-const clayWater = new THREE.MeshStandardMaterial({ color: 0xc9d6de, roughness: 0.6 });
-const clayTree = new THREE.MeshStandardMaterial({ color: 0xd9dfd6, roughness: 1, flatShading: true });
-const clayNew = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, flatShading: true });
-let clayMode = false;
 const allMeshes = [];
+const edgeLines = [];
+
+/* ---------- Palety kolorów ----------
+   ctx: jak wyciszyć otoczenie (desat = odbarwienie 0..1, lift = rozjaśnienie w stronę base)
+   concept: kolory materiałów koncepcji (klucz = nazwa materiału z Blendera bez MAT_ / MAT_C3D_)
+   bld: kolor elewacji wg typu budynku (A = typ A 4 kond., C, D)                                 */
+const LAND = {
+  ASPHALT: '#3a3e43', PARKING_PAVERS: '#8e9093', MARKING_WHITE: '#ffffff', CURB: '#ecebe7',
+  TERRACE: '#c79a66', PATH_PAVERS: '#e6d9bc', PLAYGROUND: '#e5703a', PLAY_SAND: '#f2d27f',
+  PLAY_MOUND_GRASS: '#58a043', LAWN: '#67b04a', GROUND: '#98c068', EXISTING_MEADOW: '#b9c98f',
+  TREE_CROWN_SITE: '#2f9a58', TREE_CROWN: '#4f8f45', TREE_TRUNK: '#6b5340',
+  SITE_BOUNDARY: '#e23b26', DESIGN_GRID: '#2f6fd6',
+};
+const PALETTES = {
+  akcent: {
+    name: 'Akcent', desc: 'Koncepcja w pełnym kolorze, otoczenie szare',
+    chips: ['#fbf7ef', '#3a3e43', '#e6d9bc', '#67b04a', '#e5703a', '#d9dcdd'],
+    ctx: { desat: .95, lift: .55, base: '#eceeef' }, tree: { desat: .8, lift: .7, base: '#e4e9e3' }, water: { desat: .35, lift: .35, base: '#dbe7ee' },
+    concept: { ...LAND, FACADE: '#fbf7ef', SLAB_BANDS: '#c9bfae', PLINTH: '#7b7268', ROOF: '#5a5f65', PARAPET: '#e9e2d5' },
+    edge: '#262b30', edgeOp: .55, sel: 0x1d5c8f,
+    legend: [['Budynki projektowane', '#fbf7ef'], ['Zieleń projektowana', '#67b04a'], ['Chodniki i tarasy', '#e6d9bc'], ['Plac zabaw', '#e5703a'], ['Otoczenie (wyciszone)', '#d9dcdd']],
+  },
+  funkcje: {
+    name: 'Typy budynków', desc: 'Elewacje wg typu: A, C, D',
+    chips: ['#4f86c6', '#e0843f', '#8c6cc9', '#67b04a', '#e6d9bc', '#d9dcdd'],
+    ctx: { desat: .95, lift: .6, base: '#eef0f0' }, tree: { desat: .8, lift: .72, base: '#e6eae4' }, water: { desat: .35, lift: .4, base: '#dde8ee' },
+    concept: { ...LAND, ROOF: '#4b5056', PARAPET: '#e9e5dd', PLINTH: '#6c655d' },
+    bld: { A: '#4f86c6', C: '#e0843f', D: '#8c6cc9' },
+    edge: '#1f2428', edgeOp: .6, sel: 0xffd23f,
+    legend: [['Typ A · A1–A4, B · 4 kond.', '#4f86c6'], ['Budynek C · 5 kond.', '#e0843f'], ['Zespół D · D-N, D-S', '#8c6cc9'], ['Otoczenie (wyciszone)', '#d9dcdd']],
+  },
+  makieta: {
+    name: 'Makieta', desc: 'Białe otoczenie, koncepcja jak z drewna',
+    chips: ['#d9b086', '#c69a6b', '#f4f2ee', '#e9ece4', '#ffffff', '#dfe5e8'],
+    ctx: { desat: 1, lift: .9, base: '#f3f1ed' }, tree: { desat: 1, lift: .86, base: '#e6e9e2' }, water: { desat: 1, lift: .85, base: '#d8e0e5' },
+    concept: { FACADE: '#dcb68c', SLAB_BANDS: '#c9a074', PLINTH: '#b88d62', ROOF: '#cfa77b', PARAPET: '#e0bd95',
+      ASPHALT: '#d6d3cd', PARKING_PAVERS: '#e2dfd9', MARKING_WHITE: '#ffffff', CURB: '#faf9f6', TERRACE: '#e8ddcc',
+      PATH_PAVERS: '#f6f2ea', PLAYGROUND: '#e8d6c2', PLAY_SAND: '#efe4cc', PLAY_MOUND_GRASS: '#dfe6d4', LAWN: '#e4ead9',
+      GROUND: '#eef0e8', EXISTING_MEADOW: '#efefe9', TREE_CROWN_SITE: '#bcd3b2', TREE_CROWN: '#cad8c2', TREE_TRUNK: '#c8b8a4',
+      SITE_BOUNDARY: '#c0392b', DESIGN_GRID: '#7f9cc4' },
+    edge: '#7a5a3c', edgeOp: .55, sel: 0x1d5c8f,
+    legend: [['Budynki projektowane', '#dcb68c'], ['Zagospodarowanie', '#f6f2ea'], ['Otoczenie', '#f3f1ed']],
+  },
+  oryginal: {
+    name: 'Oryginał', desc: 'Materiały z modelu w Blenderze',
+    chips: ['#f0ebe1', '#d6d6d9', '#3d3d3f', '#7aa060', '#6ba0c8', '#a3c18b'],
+    edge: '#30353a', edgeOp: .35, sel: 0x1d5c8f,
+    legend: [['Kolory jak w pliku .blend (koncepcja i otoczenie podobne)', '#f0ebe1']],
+  },
+};
+let palKey = 'akcent';
+try { const s = localStorage.getItem('kp3d-pal'); if (s && PALETTES[s]) palKey = s; } catch (e) {}
+const groupOf = n => n.startsWith('A') || n === 'B' ? 'A' : n.startsWith('D') ? 'D' : 'C';
+const matKey = m => (m && m.name || '').replace(/^MAT_(C3D_)?/, '');
+const palCache = new Map();
+const tmpGray = new THREE.Color();
+function mutedMat(orig, s) {
+  const key = orig.uuid + JSON.stringify(s);
+  if (palCache.has(key)) return palCache.get(key);
+  const m = orig.clone();
+  const c = m.color, l = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+  c.lerp(tmpGray.setRGB(l, l, l), s.desat).lerp(new THREE.Color(s.base), s.lift);
+  // rozjaśnij cienie własne otoczenia: tło staje się płaskie i jasne, koncepcja zachowuje pełny światłocień
+  if (m.emissive) { m.emissive.copy(c).multiplyScalar(0.32); m.emissiveIntensity = 1; }
+  palCache.set(key, m); return m;
+}
+function colorMat(orig, hex) {
+  const key = orig.uuid + hex;
+  if (palCache.has(key)) return palCache.get(key);
+  const m = orig.clone(); m.color.set(hex); palCache.set(key, m); return m;
+}
+function applyPalette() {
+  const p = PALETTES[palKey];
+  for (const o of allMeshes) {
+    const om = origMat.get(o), k = o.userData.kind, mk = matKey(om);
+    if (k === 'new') {                       // budynki projektowane: własny materiał, zmieniamy kolor
+      let col = p.concept?.[mk];
+      if (p.bld && (mk === 'FACADE' || mk === 'SLAB_BANDS')) {
+        const c = new THREE.Color(p.bld[groupOf(o.userData.bld)]);
+        if (mk === 'SLAB_BANDS') c.multiplyScalar(0.8);
+        om.color.copy(c);
+      } else if (col) om.color.set(col);
+      else om.color.copy(om.userData.c0);
+      o.material = om; continue;
+    }
+    if (!p.ctx) { o.material = om; continue; }
+    if (o.userData.concept) { const col = p.concept[mk]; o.material = col ? colorMat(om, col) : om; continue; }
+    o.material = mutedMat(om, k === 'water' ? p.water : k === 'tree' ? p.tree : p.ctx);
+  }
+  for (const o of allMeshes) if (o.userData.clip) clipSite(o.material);
+  for (const l of edgeLines) { l.material.color.set(p.edge); l.material.opacity = p.edgeOp; }
+  if (selected) tint(selected, 'sel');
+  document.querySelectorAll('.pal').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.p === palKey)));
+  document.getElementById('pal-legend').innerHTML = p.legend.map(([t, c]) =>
+    `<li><span class="sw" style="background:${c};outline:1px solid var(--line)"></span><span>${t}</span><span></span><span></span></li>`).join('');
+}
+/* Wycięcie otoczenia w granicy terenu inwestycji: istniejące chodniki, trawniki i teren z OSM/NMT
+   nie przebijają przez nawierzchnie koncepcji (test punkt-w-wielokącie w shaderze). */
+const SITE_RING = [[130.05,-159.6],[103.88,-177.31],[71.08,-135.09],[56.13,-133.62],[50.03,-189.95],[31.4,-166.26],[37.74,-159.88],[7.45,-129.75],[18.25,-135.6],[20.04,-138.1],[40.1,-149.25],[58.25,-120.6],[47.2,-106.6],[20.13,-111.04],[19.16,-105.04],[36.73,-93.98],[43.4,-86.54],[31.93,-76.14],[22.67,-67.75],[9.33,-55.66],[-4.0,-43.58],[-17.32,-31.51],[-30.66,-19.45],[-43.68,-7.49],[-60.21,8.05],[-69.0,18.8],[-67.69,31.23],[-92.52,34.01],[-91.78,40.97],[-91.23,46.07],[-87.86,80.93],[-36.33,84.86],[-25.2,84.69],[-14.48,82.56],[-4.83,75.51],[3.2,63.27],[95.42,-98.76],[130.05,-159.6]];
+const ringU = { value: SITE_RING.map(([x, y]) => new THREE.Vector2(x, y)) };
+const N_RING = SITE_RING.length;
+function clipSite(m) {
+  if (m.userData.clip) return;
+  m.userData.clip = true;
+  m.onBeforeCompile = sh => {
+    sh.uniforms.uRing = ringU;
+    sh.vertexShader = 'varying vec3 vWPos;\n' + sh.vertexShader.replace('#include <project_vertex>',
+      '#include <project_vertex>\n  vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = `varying vec3 vWPos;\nuniform vec2 uRing[${N_RING}];\n` + sh.fragmentShader.replace('#include <clipping_planes_fragment>',
+      `#include <clipping_planes_fragment>
+  {
+    vec2 p = vec2(vWPos.x, -vWPos.z);
+    bool inside = false;
+    for (int i = 0; i < ${N_RING}; i++) {
+      int j = i == 0 ? ${N_RING - 1} : i - 1;
+      vec2 a = uRing[i], b = uRing[j];
+      if (((a.y > p.y) != (b.y > p.y)) && (p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x)) inside = !inside;
+    }
+    if (inside) discard;
+  }`);
+  };
+  m.customProgramCacheKey = () => 'siteclip';
+  m.needsUpdate = true;
+}
+
+const palsEl = document.getElementById('pals');
+for (const [k, p] of Object.entries(PALETTES)) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'pal'; b.dataset.p = k; b.id = 'pal-' + k; b.setAttribute('aria-pressed', 'false');
+  b.innerHTML = `<span class="chips">${p.chips.map(c => `<i style="background:${c}"></i>`).join('')}</span><b>${p.name}</b><small>${p.desc}</small>`;
+  b.addEventListener('click', () => { palKey = k; try { localStorage.setItem('kp3d-pal', k); } catch (e) {} applyPalette(); });
+  palsEl.append(b);
+}
 
 /* ---------- Budynki projektowane: wybór ---------- */
 const bldMeshes = new Map();   // nazwa -> [mesh]
@@ -379,8 +524,9 @@ function tint(name, kind) {
   for (const m of bldMeshes.get(name) || []) {
     const mat = m.material;
     if (!mat.emissive) continue;
-    if (kind === 'sel') { mat.emissive.set(0x1d5c8f); mat.emissiveIntensity = 1.1; }
-    else if (kind === 'hov') { mat.emissive.set(0x1d5c8f); mat.emissiveIntensity = 0.5; }
+    const sel = PALETTES[palKey].sel;
+    if (kind === 'sel') { mat.emissive.set(sel); mat.emissiveIntensity = sel === 0x1d5c8f ? 1.1 : 0.55; }
+    else if (kind === 'hov') { mat.emissive.set(sel); mat.emissiveIntensity = sel === 0x1d5c8f ? 0.5 : 0.25; }
     else { mat.emissive.set(0x000000); mat.emissiveIntensity = 0; }
   }
 }
@@ -445,7 +591,7 @@ const loader = new GLTFLoader();
 loader.setMeshoptDecoder(MeshoptDecoder);
 const loadmsg = document.getElementById('loadmsg');
 const prog = { concept: 0, context: 0 };
-const TOTAL = 742296 + 3139340;
+const TOTAL = 1345716 + 8083324;
 const showProg = () => { loadmsg.textContent = `Wczytywanie modelu… ${Math.round((prog.concept + prog.context) / TOTAL * 100)}%`; };
 
 function prepare(root, isConcept) {
@@ -456,22 +602,31 @@ function prepare(root, isConcept) {
     top.traverse(o => {
       if (!o.isMesh) return;
       const g = o.geometry;
+      // teren nie ma normalnych (uproszczony) - liczymy gładkie; reszta ma normalne z Blendera (ostre krawędzie budynków)
+      // drzewa: przeliczone gładkie normalne (normalne z pliku ciemnieją przy nierównym skalowaniu koron)
+      if (/TREE/.test(name) && !g.userData.smoothed) { g.deleteAttribute('normal'); g.userData.smoothed = true; }
       if (!g.attributes.normal) g.computeVertexNormals();
       const mat = o.material;
-      const smooth = SMOOTH.test(name);
-      if (!smooth && mat && !mat.flatShading) { mat.flatShading = true; mat.needsUpdate = true; }
-      if (mat) { mat.side = THREE.FrontSide; }
+      if (mat) { mat.side = THREE.FrontSide; mat.flatShading = false; }
       const isBld = /^(C3D_BLD|BLD_)/.test(name);
       const isTree = /TREE/.test(name);
       o.castShadow = isBld || isTree || /^(WALL|PIER|HEDGE)/.test(name);
       o.receiveShadow = !isTree;
       if (bm) {
         o.material = mat.clone();
+        o.material.userData.c0 = o.material.color.clone();
         const key = bm[1];
         if (!bldMeshes.has(key)) bldMeshes.set(key, []);
         bldMeshes.get(key).push(o);
         o.userData.bld = key; pickables.push(o);
+        // kontur krawędzi bryły - czytelna, „wykreślona” sylwetka budynku
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g, 30),
+          new THREE.LineBasicMaterial({ color: 0x262b30, transparent: true, opacity: .55, depthWrite: false }));
+        edges.raycast = () => {};
+        o.add(edges); edgeLines.push(edges);
       }
+      o.userData.concept = isConcept;
+      o.userData.clip = !isConcept && /^(TERRAIN|ROAD|PATH|PARKING|GREEN|HEDGE|WALL|RETAINING|RAIL)/.test(name);
       origMat.set(o, o.material);
       o.userData.kind = isConcept ? (bm ? 'new' : (isTree ? 'tree' : (/GROUND/.test(name) ? 'ground' : 'land'))) :
         (/^TERRAIN|^GREEN/.test(name) ? 'ground' : /^WATER/.test(name) ? 'water' : isTree ? 'tree' : 'ctx');
@@ -491,6 +646,7 @@ Promise.all([load('models/concept.glb', 'concept'), load('models/context.glb', '
   modelReady = true;
   scene.updateMatrixWorld(true);
   fixEye();
+  applyPalette();
   document.getElementById('loading').hidden = true;
   applyTheme();
 }).catch(err => {
@@ -498,26 +654,7 @@ Promise.all([load('models/concept.glb', 'concept'), load('models/context.glb', '
   loadmsg.textContent = 'Nie udało się wczytać modelu. Odśwież stronę.';
 });
 
-/* ---------- Tryb makiety ---------- */
-function applyMode() {
-  for (const o of allMeshes) {
-    if (!clayMode) { o.material = origMat.get(o); continue; }
-    const k = o.userData.kind;
-    if (k === 'new') o.material = origMat.get(o); // budynki projektowane zostają w kolorze
-    else if (k === 'ground') o.material = clayGround;
-    else if (k === 'water') o.material = clayWater;
-    else if (k === 'tree') o.material = clayTree;
-    else if (k === 'land') o.material = clayNew;
-    else o.material = clayCtx;
-  }
-}
-for (const [id, v] of [['m-color', false], ['m-clay', true]]) {
-  document.getElementById(id).addEventListener('click', () => {
-    clayMode = v; applyMode();
-    document.getElementById('m-color').setAttribute('aria-pressed', String(!v));
-    document.getElementById('m-clay').setAttribute('aria-pressed', String(v));
-  });
-}
+applyPalette(); // pokaż wybraną paletę i legendę od razu, zanim wczyta się model
 
 /* ---------- Widoki kamery ---------- */
 const CAMS = {
@@ -580,8 +717,8 @@ function updateSun() {
   document.getElementById('az').textContent = fmt(az, 0) + '°';
   document.getElementById('el').textContent = fmt(el, 1) + '°';
   const e = Math.max(el, 0.5) * rad, a = az * rad;
-  const dir = new THREE.Vector3(Math.sin(a) * Math.cos(e), Math.sin(e), -Math.cos(a) * Math.cos(e));
-  sun.position.copy(CENTER).addScaledVector(dir, 600);
+  sunDir.set(Math.sin(a) * Math.cos(e), Math.sin(e), -Math.cos(a) * Math.cos(e));
+  placeSun();
   const up = THREE.MathUtils.clamp(el / 12, 0, 1);
   sun.intensity = 2.8 * up;
   sun.color.setHSL(0.09, 0.35 + 0.4 * (1 - up), 0.85 + 0.1 * up);
@@ -641,6 +778,7 @@ renderer.setAnimationLoop(now => {
     if (t >= 1) anim = null;
   }
   controls.update();
+  placeSun();
   const az = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
   needle.style.transform = `rotate(${az}rad)`;
   renderer.render(scene, camera);
