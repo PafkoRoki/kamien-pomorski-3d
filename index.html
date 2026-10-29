@@ -118,6 +118,11 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 10px 0 4px
 .cams button + button { border-left: 1px solid var(--line); }
 .cams button:hover { color: var(--accent); }
 .cams button[aria-pressed="true"] { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+.eye-wrap { display: flex; border-left: 1px solid var(--line); }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.eye-only { font: 500 12px var(--f-body); color: var(--fg); background: transparent; border: 0; padding: 8px 10px; cursor: pointer; max-width: 230px; }
+.eye-only.on { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+.eye-only option { color: #172126; background: #fff; }
 .pals { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .pal { display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 9px 10px 10px; background: transparent; color: var(--fg); border: 1px solid var(--line); cursor: pointer; font: inherit; }
 .pal:hover { border-color: var(--muted); }
@@ -287,7 +292,9 @@ body.shot .app { grid-template-columns: 1fr; }
       <button type="button" id="c-aerial" data-cam="aerial" aria-pressed="true">Lotniczy</button>
       <button type="button" id="c-plan" data-cam="plan" aria-pressed="false">Plan</button>
       <button type="button" id="c-north" data-cam="north" aria-pressed="false">Od północy</button>
-      <button type="button" id="c-eye" data-cam="eye" aria-pressed="false">Z wjazdu</button>
+      <label class="eye-wrap"><span class="vh">Widok z perspektywy człowieka</span>
+        <select id="eye-sel" class="view-sel eye-only" aria-label="Widok z perspektywy człowieka"></select>
+      </label>
     </div>
     <button type="button" class="hud compass" id="compass" aria-label="Ustaw północ u góry">
       <svg viewBox="-24 -24 48 48" id="needle" aria-hidden="true">
@@ -335,23 +342,9 @@ body.shot .app { grid-template-columns: 1fr; }
           <button type="button" data-l="pochmurno" aria-pressed="false">Pochmurno</button>
         </div>
       </div>
-      <div class="grp"><label class="lab" for="shot-style">Styl promptu</label>
-        <select id="shot-style">
-          <option value="nordic">Nordycki, nastrojowy</option>
-          <option value="competition" selected>Konkursowy, złota godzina</option>
-          <option value="premium">Premium, słoneczny</option>
-          <option value="drone">Masterplan z drona</option>
-          <option value="dusk">Zmierzch, niebieska godzina</option>
-          <option value="model">Makieta architektoniczna</option>
-          <option value="anime">Anime / cartoon</option>
-        </select>
-        <label class="lab" for="shot-facade">Elewacja</label>
-        <select id="shot-facade">
-          <option value="tynk">Jasny tynk + drewno</option>
-          <option value="cegla">Cegła klinkierowa</option>
-          <option value="beton">Beton architektoniczny + szkło</option>
-          <option value="drewno">Okładzina drewniana</option>
-        </select>
+      <div class="grp"><label class="lab" for="shot-view">Widok</label>
+        <select id="shot-view" class="view-sel"></select>
+        <button type="button" class="btn" id="shot-next" title="Następny widok z perspektywy człowieka (N)">Następny pieszy ›</button>
       </div>
       <div class="grp"><label class="lab" for="shot-res">Szer. px</label>
         <select id="shot-res"><option value="1920">1920</option><option value="2560" selected>2560</option><option value="3840">3840</option></select>
@@ -359,7 +352,6 @@ body.shot .app { grid-template-columns: 1fr; }
       <div class="grp">
         <button type="button" class="btn primary" id="shot-copy">Kopiuj obraz</button>
         <button type="button" class="btn" id="shot-save">Zapisz PNG</button>
-        <button type="button" class="btn" id="shot-prompt">Kopiuj prompt</button>
         <button type="button" class="btn" id="shot-close">Zamknij (Esc)</button>
       </div>
     </div>
@@ -448,7 +440,7 @@ renderer.toneMappingExposure = 1.05;
 view.prepend(renderer.domElement);
 renderer.domElement.tabIndex = 0;
 renderer.domElement.setAttribute('role', 'img');
-renderer.domElement.setAttribute('aria-label', 'Interaktywny model 3D koncepcji zabudowy w Kamieniu Pomorskim. Przeciągnij, aby obrócić, kółkiem przybliż. Klawisze 1–4 przełączają widoki, Z otwiera tryb zrzutu. Dane budynków są w tabeli w panelu.');
+renderer.domElement.setAttribute('aria-label', 'Interaktywny model 3D koncepcji zabudowy w Kamieniu Pomorskim. Przeciągnij, aby obrócić, kółkiem przybliż. Klawisze 1–3 przełączają widoki z góry, 4 lub N kolejne widoki z perspektywy człowieka, Z otwiera tryb zrzutu. Dane budynków są w tabeli w panelu.');
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 6000);
@@ -800,7 +792,7 @@ function select(name, fly) {
     if (!isFinite(dir.x)) dir.set(0.6, 0, 0.8);
     const dist = 70 + Math.sqrt(b.fp) * 3;
     const pos = t.clone().addScaledVector(dir, dist).setY(b.top + dist * 0.75);
-    flyTo(pos, t);
+    setFov(FOV_BIRD); flyTo(pos, t);
     setCamBtn(null);
   }
 }
@@ -1370,26 +1362,60 @@ const CAMS = {
   aerial: { pos: P(190, -300, 175), tgt: P(10, -30, 2) },
   plan:   { pos: P(19, -52.1, 560), tgt: P(19, -52, 0) },
   north:  { pos: P(-40, 320, 120), tgt: P(15, -40, 4) },
-  eye:    { pos: P(66, -110.9, 3), tgt: P(24.4, -37.9, 5) },
 };
-// wysokość terenu pod punktem (do widoku z poziomu pieszego)
+const BIRD = { aerial: 'Lotniczy', plan: 'Plan', north: 'Od północy' };
+// widoki z perspektywy człowieka: oko 1,7 m nad terenem, punkty w układzie modelu (E, N)
+const EYES = [
+  { id: 'e1', name: 'Wjazd od ul. Lipowej', p: [66, -110.9], t: [24.4, -37.9], th: 5 },
+  { id: 'e2', name: 'Ulica wewnętrzna – na północ', p: [40, -65.2], t: [-20, 40], th: 7 },
+  { id: 'e3', name: 'Ulica wewnętrzna – na południe', p: [-6.7, 16.9], t: [60, -100], th: 6 },
+  { id: 'e4', name: 'Plac zabaw', p: [-12, 4], t: [-36, -3], th: 3 },
+  { id: 'e5', name: 'Parking przy A3 i A4', p: [20, -50], t: [55, -35], th: 7 },
+  { id: 'e6', name: 'Od łąk wschodnich', p: [150, -20], t: [40, -40], th: 9 },
+  { id: 'e7', name: 'Od ul. Kanałowej', p: [0, -120], t: [55, -80], th: 8 },
+  { id: 'e8', name: 'Dziedziniec przy budynkach C i D', p: [-40, 35], t: [-20, 70], th: 8 },
+];
+for (const e of EYES) CAMS[e.id] = { pos: P(e.p[0], e.p[1], 3), tgt: P(e.t[0], e.t[1], e.th), eye: true, th: e.th };
+// wysokość terenu pod punktem (do widoków z poziomu pieszego)
 function groundAt(v) {
   const r = new THREE.Raycaster(new THREE.Vector3(v.x, 300, v.z), new THREE.Vector3(0, -1, 0));
   const hit = r.intersectObjects(allMeshes.filter(m => /ground|land/.test(m.userData.kind)), false)[0];
   return hit ? hit.point.y : v.y - 1.7;
 }
 function fixEye() {
-  CAMS.eye.pos.y = groundAt(CAMS.eye.pos) + 1.7;
-  CAMS.eye.tgt.y = groundAt(CAMS.eye.tgt) + 4;
+  for (const e of EYES) { const c = CAMS[e.id]; c.pos.y = groundAt(c.pos) + 1.7; c.tgt.y = groundAt(c.tgt) + e.th; }
 }
+// listy widoków: w pasku kamer (tylko piesze) i w trybie zrzutu (wszystkie)
+(function fillViewLists() {
+  const eyeSel = document.getElementById('eye-sel'), shotSel = document.getElementById('shot-view');
+  eyeSel.innerHTML = '<option value="" disabled selected>Z perspektywy człowieka…</option>' + EYES.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+  shotSel.innerHTML = '<option value="" disabled selected>Wybierz widok…</option>'
+    + `<optgroup label="Z góry">${Object.entries(BIRD).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</optgroup>`
+    + `<optgroup label="Z perspektywy człowieka">${EYES.map(e => `<option value="${e.id}">${e.name}</option>`).join('')}</optgroup>`;
+})();
+// widoki piesze: szerszy kąt (ok. obiektyw 24–28 mm), z góry: 38°
+const FOV_BIRD = 38, FOV_EYE = 62;
+function setFov(f) { camera.fov = f; camera.updateProjectionMatrix(); }
+function goView(k) { const c = CAMS[k]; if (!c) return; setFov(c.eye ? FOV_EYE : FOV_BIRD); flyTo(c.pos, c.tgt); setCamBtn(k); }
+function nextEye() { const i = EYES.findIndex(e => e.id === curView); goView(EYES[(i + 1) % EYES.length].id); }
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let anim = null;
 function flyTo(pos, tgt) {
   if (reduced) { camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
   anim = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos.clone(), t1: tgt.clone(), s: performance.now(), d: 1100 };
 }
-function setCamBtn(k) { document.querySelectorAll('.cams button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cam === k))); }
-document.querySelectorAll('.cams button').forEach(b => b.addEventListener('click', () => { const c = CAMS[b.dataset.cam]; flyTo(c.pos, c.tgt); setCamBtn(b.dataset.cam); }));
+let curView = 'aerial';
+function setCamBtn(k) {
+  curView = k;
+  document.querySelectorAll('.cams button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cam === k)));
+  const eyeSel = document.getElementById('eye-sel'), isEye = !!(k && CAMS[k]?.eye);
+  eyeSel.value = isEye ? k : ''; eyeSel.classList.toggle('on', isEye);
+  document.getElementById('shot-view').value = k && CAMS[k] ? k : '';
+}
+document.querySelectorAll('.cams button').forEach(b => b.addEventListener('click', () => goView(b.dataset.cam)));
+document.getElementById('eye-sel').addEventListener('change', e => goView(e.target.value));
+document.getElementById('shot-view').addEventListener('change', e => goView(e.target.value));
+document.getElementById('shot-next').addEventListener('click', nextEye);
 camera.position.copy(CAMS.aerial.pos); controls.target.copy(CAMS.aerial.tgt); controls.update();
 document.getElementById('compass').addEventListener('click', () => {
   const t = controls.target.clone(); const d = camera.position.distanceTo(t);
@@ -1517,10 +1543,10 @@ function enterShot() {
   shot.prevLayers = { 'l-csite': LAYERS.find(l => l.id === 'l-csite').on, 'l-cgrid': LAYERS.find(l => l.id === 'l-cgrid').on, 'l-cgar': LAYERS.find(l => l.id === 'l-cgar').on };
   setLayer('l-csite', false); setLayer('l-cgrid', false); setLayer('l-cgar', false);   // czerwona granica i siatki mylą AI
   select(null);
-  const st = STYLES[$('shot-style').value] || STYLES.competition;
-  palKey = st.pal; applyPalette();
+  palKey = 'naturalna'; applyPalette();
   document.body.classList.add('shot'); shotbar.hidden = false;
-  setLight(shot.light || st.light);
+  setLight(shot.light || 'poludnie');
+  setCamBtn(curView);
   requestAnimationFrame(() => { resize(); updateFrame(); });
 }
 function exitShot() {
@@ -1551,17 +1577,18 @@ $('shot-close').addEventListener('click', exitShot);
 document.addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
   if (e.key === 'Escape') { if (shot.on) exitShot(); else if (selected) select(null); return; }
+  const cam = { 1: 'aerial', 2: 'plan', 3: 'north' }[e.key];
+  if (cam) { goView(cam); e.preventDefault(); return; }
+  if (e.key === '4' || e.key.toLowerCase() === 'n') { nextEye(); e.preventDefault(); return; }
   if (shot.on) return;
-  const cam = { 1: 'c-aerial', 2: 'c-plan', 3: 'c-north', 4: 'c-eye' }[e.key];
   const mode = { w: 'all', k: 'c', o: 'x' }[e.key.toLowerCase()];
-  if (cam) { $(cam).click(); e.preventDefault(); }
-  else if (mode) { setMode(mode); e.preventDefault(); }
+  if (mode) { setMode(mode); e.preventDefault(); }
   else if (e.key === 'z' || e.key === 'Z') { enterShot(); e.preventDefault(); }
 });
 
 /* ---------- Panel: zwijanie, sekcje, podpowiedź ---------- */
 const coarse = matchMedia('(pointer: coarse)').matches;
-$('hint').textContent = coarse ? '1 palec: obrót · 2 palce: zoom i przesuw' : 'Obrót: lewy przycisk · przesuw: prawy · zoom: kółko · skróty: 1–4 widoki, W/K/O warstwy, Z zrzut';
+$('hint').textContent = coarse ? '1 palec: obrót · 2 palce: zoom i przesuw' : 'Obrót: lewy przycisk · przesuw: prawy · zoom: kółko · skróty: 1–3 widoki z góry, 4 / N kolejny widok pieszego, W/K/O warstwy, Z zrzut';
 function setPanel(open) {
   document.body.classList.toggle('nopanel', !open);
   $('panel-toggle').setAttribute('aria-expanded', String(open));
@@ -1579,7 +1606,7 @@ document.querySelectorAll('details.sec').forEach(d => {
 const r1 = v => Math.round(v * 10) / 10;
 function viewHash() {
   const c = camera.position, t = controls.target;
-  return '#c=' + [c.x, c.y, c.z, t.x, t.y, t.z].map(r1).join(',') + '&p=' + palKey + '&d=' + day.join('-') + '&t=' + timeEl.value + '&m=' + viewMode;
+  return '#c=' + [c.x, c.y, c.z, t.x, t.y, t.z].map(r1).join(',') + '&p=' + palKey + '&d=' + day.join('-') + '&t=' + timeEl.value + '&m=' + viewMode + '&f=' + Math.round(camera.fov);
 }
 function applyHash() {
   const h = new URLSearchParams(location.hash.slice(1));
@@ -1592,6 +1619,7 @@ function applyHash() {
   }
   if (t >= 5 && t <= 21) timeEl.value = t;
   if (['all', 'c', 'x'].includes(h.get('m'))) setMode(h.get('m'));
+  const f = +h.get('f'); if (f >= 20 && f <= 90) setFov(f);
   updateSun();
 }
 $('share').addEventListener('click', async () => {
@@ -1623,90 +1651,7 @@ $('shot-copy').addEventListener('click', async () => {
     toast('Ta przeglądarka nie pozwala skopiować obrazu – użyj „Zapisz PNG”.');
   }
 });
-/* Style promptu – opracowane na podstawie sygnatur czołowych studiów wizualizacji
-   (MIR: nastrój, stonowana paleta, krajobraz ważniejszy od ludzi; Luxigon / duńskie biura
-   konkursowe: złota godzina, życie, bujna zieleń; Hayes Davidson: realistycznie, optymistycznie;
-   Brick Visual: filmowo, stonowana paleta) i zaleceń OpenAI dla edycji obrazów
-   (scena → obiekt → szczegóły → ograniczenia, jawna lista „zachowaj”, „change only…”). */
-const STYLES = {
-  nordic: { light: 'pochmurno', pal: 'naturalna',
-    mood: 'Calm, atmospheric Nordic architectural photograph. Soft diffuse light from a thin high overcast sky with a faint warm glow near the horizon, light sea mist drifting over the lagoon. Muted, slightly desaturated palette of greys, sand, soft greens and weathered wood. The buildings sit quietly in the landscape; landscape and sky are as important as the architecture.',
-    people: 'Very few people, small and distant (a cyclist, someone walking a dog). They must not draw attention.',
-    out: 'Fine-art architectural photography, subtle film grain, restrained and elegant.' },
-  competition: { light: 'zlota', pal: 'naturalna',
-    mood: 'Vibrant architectural competition visualization at golden hour. Low warm sun raking across the facades, long soft shadows, sky glowing from peach near the horizon to pale blue above. Lush, varied planting: meadow grasses, flowering perennials, healthy young deciduous trees.',
-    people: 'Lively but natural everyday life: families, children on the playground, cyclists, neighbours on balconies, people strolling towards the water. Realistic scale, varied ages, nobody posing.',
-    out: 'High-end competition rendering quality, rich but natural colours, strong sense of place and community.' },
-  premium: { light: 'poludnie', pal: 'naturalna',
-    mood: 'Polished, optimistic premium real-estate photograph on a clear summer day. Crisp sunlight, deep blue sky with a few light cumulus clouds, high clarity and fine material detail, clean pavements, well-kept lawns and planting.',
-    people: 'A moderate number of residents placed naturally along paths: a parent with a pram, cyclists, a couple with shopping bags.',
-    out: 'Sales-brochure quality photograph, bright, sharp, colour-accurate, no stylisation.' },
-  drone: { light: 'poludnie', pal: 'naturalna',
-    mood: 'Aerial drone photograph of the whole new quarter in its context, soft late-morning sunlight, clear air with gentle aerial perspective towards the horizon. The new quarter is the clear subject: slightly brighter and crisper than the surrounding town, neatly landscaped.',
-    people: 'Only tiny figures. Cars in the parking areas, sailboats on the lagoon, red cattle grazing on the meadows east of the site.',
-    out: 'Professional aerial photography, natural colours, high detail across the whole frame.' },
-  dusk: { light: 'zlota', pal: 'naturalna',
-    mood: 'Cinematic blue-hour photograph shortly after sunset. Deep blue sky with a last band of orange on the horizon, warm interior light glowing in many windows, street lamps and path bollards switched on, subtle reflections on slightly wet pavements after rain, calm lagoon mirroring the sky.',
-    people: 'A few silhouettes walking home, a couple on a balcony. Quiet evening mood.',
-    out: 'Cinematic architectural photography, balanced exposure between sky and lit windows, no blown highlights.' },
-  anime: { light: 'poludnie', pal: 'anime', anime: true,
-    mood: 'Bright, cheerful early-summer afternoon painted as a Japanese anime film background: saturated blue sky with big fluffy cumulus clouds, warm sunlight, clean cel-shaded shadows with soft edges, lush vivid greenery with painterly brush texture, sparkling lagoon.',
-    people: 'A few small, simply drawn anime-style characters: children running to the playground, a cyclist, neighbours chatting near the water. Charming and calm, not crowded.',
-    out: 'Hand-painted anime background art with clean confident line art on the buildings, soft colour gradients, rich but harmonious palette, cinematic wide shot.' },
-  model: { light: 'pochmurno', pal: 'makieta', model: true,
-    mood: 'Photograph of a physical architectural scale model (1:500) on a studio table. New buildings, podiums and landscaping made of light birch plywood and basswood with engraved window grid lines; existing buildings and terrain in matte white card; water as pale frosted acrylic; trees as small white and light-green foam spheres. Soft studio light from one side, gentle shadows, neutral light-grey background.',
-    people: 'Only a few tiny white scale figures.',
-    out: 'Macro product photography of an architectural model, shallow depth of field with a slight tilt-shift effect, sharp focus on the new quarter.' },
-};
-const FACADES = {
-  tynk: 'light warm-white mineral render with natural larch wood accents and slim dark-grey window frames',
-  cegla: 'red-brown Pomeranian clinker brick with subtle lighter brick details and dark window frames',
-  beton: 'light sandblasted architectural concrete panels with generous glazing and bronze anodised aluminium details',
-  drewno: 'vertical grey-weathered timber cladding above a light render ground floor, dark window frames',
-};
-function promptText() {
-  const st = STYLES[$('shot-style').value] || STYLES.competition;
-  const fac = FACADES[$('shot-facade').value] || FACADES.tynk;
-  const eye = camera.position.y - controls.target.y < 25;
-  const L = [];
-  L.push(st.model
-    ? 'GOAL: Turn the attached screenshot of a 3D massing model into a photorealistic photograph of a physical architectural scale model of the same scene.'
-    : st.anime
-    ? 'GOAL: Redraw the attached screenshot of a 3D model as a detailed anime-style illustration (hand-painted Japanese animation background art) of exactly the same scene.'
-    : 'GOAL: Turn the attached screenshot of a 3D massing model into a photorealistic architectural visualization that looks like a real photograph.');
-  L.push('KEEP EXACTLY: camera position, angle and framing; horizon line; the position, footprint, height and number of storeys of every building; flat roofs; the 1.5 m podium under buildings A1–A4 and B with its garage ramps; the layout of roads, parking, paths, terraces, playground and green areas; the shoreline, marina and piers. Do not add, remove, move or resize any building. Keep vertical lines vertical.');
-  L.push('CHANGE ONLY: materials, textures, lighting, sky, vegetation detail, people, cars and small street furniture.');
-  L.push('SITE: Kamień Pomorski, a small historic town on the Baltic coast of north-west Poland, next to the Kamień Lagoon with a sailing marina. The new residential quarter (8 buildings, 4–5 storeys) sits at the edge of town, between existing low-rise housing and open meadows.');
-  if (!st.model) {
-    L.push(`ARCHITECTURE: contemporary residential buildings with simple calm volumes and flat roofs with a thin parapet. Facades: ${fac}. Regular window rhythm on every storey, balconies or loggias with simple balustrades. The podium is clad in light natural stone; asphalt road, concrete-paver paths and parking, wooden terraces, lawns, young deciduous trees, a children's playground with sand.`);
-    L.push('CONTEXT: existing buildings, meadows and trees rendered realistically but quieter and less detailed than the new quarter, so the new quarter is the clear focus.');
-  }
-  L.push('MOOD AND LIGHT: ' + st.mood);
-  L.push('PEOPLE: ' + st.people);
-  L.push('CAMERA: ' + (st.model ? 'keep the framing of the input, as if photographing the model from the same angle.'
-    : eye ? 'eye-level photograph from about 1.6 m, 24–28 mm architectural lens, two-point perspective, keep the framing of the input.'
-          : 'aerial drone photograph, keep the exact framing and viewing angle of the input.'));
-  L.push(`OUTPUT: ${st.out} Season: early summer. No text, labels, logos or watermarks.`);
-  L.push('CHECK BEFORE FINISHING: same number of buildings and storeys, same roof lines and the same road layout as the input image.');
-  return L.join('\n\n');
-}
-// wybór stylu promptu ustawia pasujące światło i paletę w modelu
-$('shot-style').addEventListener('change', () => {
-  const st = STYLES[$('shot-style').value];
-  palKey = st.pal; applyPalette(); setLight(st.light);
-  try { localStorage.setItem('kp3d-style', $('shot-style').value); } catch (e) {}
-});
-$('shot-facade').addEventListener('change', () => { try { localStorage.setItem('kp3d-facade', $('shot-facade').value); } catch (e) {} });
-try {
-  const s = localStorage.getItem('kp3d-style'), f = localStorage.getItem('kp3d-facade');
-  if (s && STYLES[s]) $('shot-style').value = s;
-  if (f && FACADES[f]) $('shot-facade').value = f;
-} catch (e) {}
-$('shot-prompt').addEventListener('click', async () => {
-  const t = promptText();
-  try { await navigator.clipboard.writeText(t); toast('Skopiowano prompt – wklej go w ChatGPT razem z obrazem.'); }
-  catch (e) { console.info(t); toast('Nie udało się skopiować – prompt jest w konsoli przeglądarki (F12).'); }
-});
+
 
 /* ---------- Pętla ---------- */
 // kontury w stylu anime: OutlineEffect (odwrócona powłoka), tylko gdy aktywna paleta toon
