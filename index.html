@@ -146,8 +146,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 10px 0 4px
 .hbtn { font: 600 12px var(--f-body); color: var(--fg); padding: 7px 12px; cursor: pointer; min-height: 32px; }
 .hbtn:hover { color: var(--accent); border-color: var(--accent); }
 .status { left: 50%; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); padding: 6px 12px; font: 12px var(--f-mono); color: var(--muted); display: flex; gap: 8px; align-items: center; }
-.status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1s ease-in-out infinite alternate; }
-@keyframes pulse { from { opacity: .3; } to { opacity: 1; } }
+.status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 /* zwijane sekcje panelu */
 .sec > summary { list-style: none; cursor: pointer; border-radius: 2px; }
 .sec > summary::-webkit-details-marker { display: none; }
@@ -193,7 +192,7 @@ body.shot .app { grid-template-columns: 1fr; }
   .sec > summary { padding-block: 8px; }
   .card .x { width: 44px; height: 44px; }
 }
-@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } .status::before { animation: none; } .loading .fill, .sec > summary h2::after { transition: none; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } .loading .fill, .sec > summary h2::after { transition: none; } }
 </style>
 </head>
 <body>
