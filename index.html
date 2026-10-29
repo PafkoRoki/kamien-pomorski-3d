@@ -269,6 +269,7 @@ body.shot .app { grid-template-columns: 1fr; }
           <button type="button" data-p="naturalna" aria-pressed="true">Naturalny</button>
           <button type="button" data-p="makieta" aria-pressed="false">Makieta</button>
           <button type="button" data-p="akcent" aria-pressed="false">Akcent</button>
+          <button type="button" data-p="anime" aria-pressed="false">Anime</button>
         </div>
       </div>
       <div class="grp"><span class="lab">Światło</span>
@@ -287,6 +288,7 @@ body.shot .app { grid-template-columns: 1fr; }
           <option value="drone">Masterplan z drona</option>
           <option value="dusk">Zmierzch, niebieska godzina</option>
           <option value="model">Makieta architektoniczna</option>
+          <option value="anime">Anime / cartoon</option>
         </select>
         <label class="lab" for="shot-facade">Elewacja</label>
         <select id="shot-facade">
@@ -325,6 +327,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { computeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
+import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js';
 // szybkie raycasty (BVH) – rozmieszczanie krów, łodzi i łącznic po terenie
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -434,9 +437,11 @@ function skyTexture([top, hor]) {
   g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
+SKIES.anime = ['#2f86e0', '#c4e8fa'];
 function applyTheme() {
-  if (shot.on) {
-    const sk = SKIES[shot.light || 'poludnie'];
+  const toon = typeof palKey !== 'undefined' && PALETTES[palKey]?.toon;
+  if (shot.on || toon) {
+    const sk = toon ? SKIES.anime : SKIES[shot.light || 'poludnie'];
     scene.background = skyTexture(sk);
     scene.fog = new THREE.Fog(new THREE.Color(sk[1]), 600, 1700);
     return;
@@ -535,6 +540,17 @@ const PALETTES = {
     edge: '#000000', edgeOp: 0, sel: 0x1d5c8f,
     legend: [['Naturalne kolory koncepcji i otoczenia, bez konturów – dobry podkład do wizualizacji AI', '#6f9f4f']],
   },
+  anime: {
+    name: 'Anime / cartoon', desc: 'Cel-shading, kontury, nasycone kolory',
+    chips: ['#fff4e2', '#4f8f9a', '#7cc95a', '#4fb3e6', '#ff8a5c', '#1d1f24'],
+    ctx: null, toon: true,
+    concept: { ...LAND, FACADE: '#fff4e2', SLAB_BANDS: '#f0d6ad', PLINTH: '#c98f63', ROOF: '#4f8f9a', PARAPET: '#fbe9cf', PODIUM: '#d8b48a',
+      ASPHALT: '#5a5f6b', PARKING_PAVERS: '#a7a9b3', MARKING_WHITE: '#ffffff', CURB: '#ffffff', TERRACE: '#d79b5f', PATH_PAVERS: '#f3dfb4',
+      PLAYGROUND: '#ff8a5c', PLAY_SAND: '#ffe08a', PLAY_MOUND_GRASS: '#7cc95a', LAWN: '#7cc95a', GROUND: '#8fd36a', EXISTING_MEADOW: '#a8d86e',
+      TREE_CROWN_SITE: '#3fae4f', TREE_CROWN: '#4fa34a', TREE_TRUNK: '#7a5136', DOOR: '#3a3f4a', SITE_BOUNDARY: '#ff5d73' },
+    edge: '#000000', edgeOp: 0, sel: 0xff5d73,
+    legend: [['Cel-shading z czarnymi konturami i nasyconymi kolorami – styl animacji', '#7cc95a']],
+  },
   oryginal: {
     name: 'Oryginał', desc: 'Materiały z modelu w Blenderze',
     chips: ['#f0ebe1', '#d6d6d9', '#3d3d3f', '#7aa060', '#6ba0c8', '#a3c18b'],
@@ -581,6 +597,12 @@ function applyPalette() {
     if (!p.ctx) { o.material = om; continue; }
     o.material = mutedMat(om, k === 'water' ? p.water : k === 'tree' ? p.tree : p.ctx);
   }
+  // styl anime: zamiana na materiały toon (cel-shading) + kontury tylko dla brył (budynki, drzewa, pomosty)
+  if (p.toon) for (const o of allMeshes) {
+    const top = o.userData.top || '', k = o.userData.kind;
+    const outline = k === 'new' || k === 'tree' || /^(BLD_|C3D_BLD|PIER|WALL|HEDGE|RETAINING)/.test(top);
+    o.material = toonOf(o.material, !o.userData.concept, outline);
+  }
   for (const o of allMeshes) { if (o.userData.clip) clipSite(o.material); if (o.userData.hole) clipHoles(o.material); }
   for (const l of edgeLines) { l.material.color.set(p.edge); l.material.opacity = p.edgeOp; l.visible = p.edgeOp > 0; }
   document.querySelectorAll('#shot-pal button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.p === palKey)));
@@ -588,6 +610,26 @@ function applyPalette() {
   document.querySelectorAll('.pal').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.p === palKey)));
   document.getElementById('pal-legend').innerHTML = p.legend.map(([t, c]) =>
     `<li><span class="sw" style="background:${c};outline:1px solid var(--line)"></span><span>${t}</span><span></span><span></span></li>`).join('');
+  applyTheme();
+}
+/* --- materiały toon (anime / cartoon) --- */
+const toonGrad = new THREE.DataTexture(new Uint8Array([95, 95, 95, 255, 175, 175, 175, 255, 255, 255, 255, 255]), 3, 1);
+toonGrad.minFilter = toonGrad.magFilter = THREE.NearestFilter; toonGrad.needsUpdate = true;
+const toonCache = new Map(), CREAM = new THREE.Color('#fbefd9');
+function toonOf(src, ctx, outline) {
+  const key = src.uuid + '|' + src.color.getHexString() + (outline ? 'o' : '');
+  if (toonCache.has(key)) return toonCache.get(key);
+  const c = src.color.clone();
+  if (ctx) {                                   // otoczenie: żywsze kolory, jasne powierzchnie ocieplone
+    const hsl = {}; c.getHSL(hsl);
+    c.setHSL(hsl.h, Math.min(1, hsl.s * 1.45 + 0.04), Math.min(0.9, hsl.l * 1.04));
+    if (hsl.l > 0.6) c.lerp(CREAM, 0.35);
+  }
+  const m = new THREE.MeshToonMaterial({ color: c, gradientMap: toonGrad, side: src.side, transparent: src.transparent, opacity: src.opacity });
+  Object.assign(m, { polygonOffset: src.polygonOffset, polygonOffsetFactor: src.polygonOffsetFactor, polygonOffsetUnits: src.polygonOffsetUnits });
+  m.name = src.name;
+  m.userData.outlineParameters = { thickness: 0.0065, color: [0.05, 0.05, 0.07], alpha: 1, visible: outline };
+  toonCache.set(key, m); return m;
 }
 /* Wycięcie otoczenia w granicy terenu inwestycji: istniejące chodniki, trawniki i teren z OSM/NMT
    nie przebijają przez nawierzchnie koncepcji (test punkt-w-wielokącie w shaderze). */
@@ -1333,7 +1375,7 @@ function capture() {
   const pr = renderer.getPixelRatio();
   renderer.setPixelRatio(1); renderer.setSize(ow, oh, false);
   camera.aspect = W / H; camera.setViewOffset(W * s, H * s, f.x * s, f.y * s, ow, oh); camera.updateProjectionMatrix();
-  placeSun(); renderer.render(scene, camera);
+  placeSun(); draw();
   const url = renderer.domElement.toDataURL('image/png');
   camera.clearViewOffset(); renderer.setPixelRatio(pr); resize();
   return { url, ow, oh };
@@ -1391,6 +1433,10 @@ const STYLES = {
     mood: 'Cinematic blue-hour photograph shortly after sunset. Deep blue sky with a last band of orange on the horizon, warm interior light glowing in many windows, street lamps and path bollards switched on, subtle reflections on slightly wet pavements after rain, calm lagoon mirroring the sky.',
     people: 'A few silhouettes walking home, a couple on a balcony. Quiet evening mood.',
     out: 'Cinematic architectural photography, balanced exposure between sky and lit windows, no blown highlights.' },
+  anime: { light: 'poludnie', pal: 'anime', anime: true,
+    mood: 'Bright, cheerful early-summer afternoon painted as a Japanese anime film background: saturated blue sky with big fluffy cumulus clouds, warm sunlight, clean cel-shaded shadows with soft edges, lush vivid greenery with painterly brush texture, sparkling lagoon.',
+    people: 'A few small, simply drawn anime-style characters: children running to the playground, a cyclist, neighbours chatting near the water. Charming and calm, not crowded.',
+    out: 'Hand-painted anime background art with clean confident line art on the buildings, soft colour gradients, rich but harmonious palette, cinematic wide shot.' },
   model: { light: 'pochmurno', pal: 'makieta', model: true,
     mood: 'Photograph of a physical architectural scale model (1:500) on a studio table. New buildings, podiums and landscaping made of light birch plywood and basswood with engraved window grid lines; existing buildings and terrain in matte white card; water as pale frosted acrylic; trees as small white and light-green foam spheres. Soft studio light from one side, gentle shadows, neutral light-grey background.',
     people: 'Only a few tiny white scale figures.',
@@ -1409,6 +1455,8 @@ function promptText() {
   const L = [];
   L.push(st.model
     ? 'GOAL: Turn the attached screenshot of a 3D massing model into a photorealistic photograph of a physical architectural scale model of the same scene.'
+    : st.anime
+    ? 'GOAL: Redraw the attached screenshot of a 3D model as a detailed anime-style illustration (hand-painted Japanese animation background art) of exactly the same scene.'
     : 'GOAL: Turn the attached screenshot of a 3D massing model into a photorealistic architectural visualization that looks like a real photograph.');
   L.push('KEEP EXACTLY: camera position, angle and framing; horizon line; the position, footprint, height and number of storeys of every building; flat roofs; the 1.5 m podium under buildings A1–A4 and B with its garage ramps; the layout of roads, parking, paths, terraces, playground and green areas; the shoreline, marina and piers. Do not add, remove, move or resize any building. Keep vertical lines vertical.');
   L.push('CHANGE ONLY: materials, textures, lighting, sky, vegetation detail, people, cars and small street furniture.');
@@ -1445,6 +1493,9 @@ $('shot-prompt').addEventListener('click', async () => {
 });
 
 /* ---------- Pętla ---------- */
+// kontury w stylu anime: OutlineEffect (odwrócona powłoka), tylko gdy aktywna paleta toon
+const outlineFx = new OutlineEffect(renderer, { defaultThickness: 0.0065, defaultColor: [0.05, 0.05, 0.07], defaultAlpha: 1, defaultKeepAlive: true });
+function draw() { if (PALETTES[palKey]?.toon) outlineFx.render(scene, camera); else renderer.render(scene, camera); }
 const needle = document.getElementById('needle');
 function resize() {
   const w = view.clientWidth, h = view.clientHeight;
@@ -1464,7 +1515,7 @@ renderer.setAnimationLoop(now => {
   placeSun();
   const az = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
   needle.style.transform = `rotate(${az}rad)`;
-  renderer.render(scene, camera);
+  draw();
   updateLabels();
 });
 applyTheme();

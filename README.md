@@ -4,7 +4,7 @@ Interaktywna przeglądarka 3D koncepcji zagospodarowania działek 100/15, 100/16
 
 - obrót / przesuw / zoom, gotowe widoki (lotniczy, plan, od północy, z wjazdu)
 - karty budynków (kondygnacje, pow. zabudowy, PUC, rzędne)
-- palety kolorów: Akcent, Typy budynków, Makieta, Naturalna, Oryginał
+- palety kolorów: Akcent, Typy budynków, Makieta, Naturalna, Anime / cartoon (cel-shading + kontury), Oryginał
 - tryb zrzutu do wizualizacji AI: kadry 16:9/3:2/4:3/1:1/9:16, światło, eksport PNG do 3840 px, kopiowanie obrazu i promptu
 - budynki typu A (A1–A4, B) na postumencie 1,5 m z garażem podziemnym i rampą zjazdową
 - łącznice dróg koncepcji z ul. Lipową i Kanałową
