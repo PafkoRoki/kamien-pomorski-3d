@@ -144,7 +144,7 @@ body.shot .app { grid-template-columns: 1fr; }
 .frame { position: absolute; pointer-events: none; box-shadow: 0 0 0 9999px rgba(10, 14, 18, .5); outline: 1px solid rgba(255, 255, 255, .75); }
 .shotbar { left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: center; padding: 10px 12px; width: max-content; max-width: calc(100% - 28px); }
 .shotbar .grp { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-.shotbar .lab { font: 500 10.5px var(--f-mono); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.shotbar .lab { font: 500 11px var(--f-mono); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
 .shotbar .seg button { padding: 5px 8px; }
 .shotbar select { font: 12px var(--f-body); padding: 4px 6px; background: var(--panel); color: var(--fg); border: 1px solid var(--line); }
 .btn { font: 600 12px var(--f-body); border: 1px solid var(--line); background: var(--panel); color: var(--fg); padding: 6px 11px; cursor: pointer; }
@@ -241,9 +241,7 @@ body.shot .app { grid-template-columns: 1fr; }
       <svg viewBox="-24 -24 48 48" id="needle" aria-hidden="true">
         <circle r="21" fill="none" stroke="var(--line)" />
         <path d="M0-17 6 2H-6Z" fill="var(--site)" />
-        <path d="M0 17 6 2H-6Z" fill="var(--muted)" />
-        <text y="-6" x="0" text-anchor="middle" font-size="0" fill="var(--fg)">N</text>
-      </svg>
+        <path d="M0 17 6 2H-6Z" fill="var(--muted)" />      </svg>
     </button>
     <div class="hud card" id="card" hidden>
       <button type="button" class="x" id="card-x" aria-label="Zamknij">×</button>
