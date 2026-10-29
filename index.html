@@ -227,7 +227,7 @@ body.shot .app { grid-template-columns: 1fr; }
         <div class="kpi"><span class="v">2 508,7<small>m²</small></span><span class="k">pow. zabudowy · 13,3%</span></div>
         <div class="kpi"><span class="v">11 170<small>m²</small></span><span class="k">pow. całkowita (PUC)</span></div>
         <div class="kpi"><span class="v">0,59</span><span class="k">intensywność zabudowy</span></div>
-        <div class="kpi"><span class="v">97</span><span class="k">miejsc postojowych</span></div>
+        <div class="kpi"><span class="v">104</span><span class="k">miejsc postojowych</span></div>
       </div>
     </details>
 
@@ -570,7 +570,7 @@ const LAND = {
   TERRACE: '#c79a66', PATH_PAVERS: '#e6d9bc', PLAYGROUND: '#e5703a', PLAY_SAND: '#f2d27f',
   PLAY_MOUND_GRASS: '#58a043', LAWN: '#67b04a', GROUND: '#98c068', EXISTING_MEADOW: '#b9c98f',
   TREE_CROWN_SITE: '#2f9a58', TREE_CROWN: '#4f8f45', TREE_TRUNK: '#6b5340',
-  SITE_BOUNDARY: '#e23b26', DESIGN_GRID: '#2f6fd6', PODIUM: '#b7b0a4', DOOR: '#23262a', GLASS: '#3c4b57',
+  SITE_BOUNDARY: '#e23b26', DESIGN_GRID: '#2f6fd6', PODIUM: '#b7b0a4', DOOR: '#23262a', GLASS: '#3c4b57', HEDGE: '#3d7d3f',
 };
 const PALETTES = {
   akcent: {
@@ -598,7 +598,7 @@ const PALETTES = {
       ASPHALT: '#d6d3cd', PARKING_PAVERS: '#e2dfd9', MARKING_WHITE: '#ffffff', CURB: '#faf9f6', TERRACE: '#e8ddcc',
       PATH_PAVERS: '#f6f2ea', PLAYGROUND: '#e8d6c2', PLAY_SAND: '#efe4cc', PLAY_MOUND_GRASS: '#dfe6d4', LAWN: '#e4ead9',
       GROUND: '#eef0e8', EXISTING_MEADOW: '#efefe9', TREE_CROWN_SITE: '#bcd3b2', TREE_CROWN: '#cad8c2', TREE_TRUNK: '#c8b8a4',
-      SITE_BOUNDARY: '#c0392b', DESIGN_GRID: '#7f9cc4', PODIUM: '#c49a6d', DOOR: '#7a5a3c', GLASS: '#a67d55' },
+      SITE_BOUNDARY: '#c0392b', DESIGN_GRID: '#7f9cc4', PODIUM: '#c49a6d', DOOR: '#7a5a3c', GLASS: '#a67d55', HEDGE: '#cbd8bf' },
     edge: '#7a5a3c', edgeOp: .55, sel: 0x1d5c8f,
     legend: [['Budynki projektowane', '#dcb68c'], ['Zagospodarowanie', '#f6f2ea'], ['Otoczenie', '#f3f1ed']],
   },
@@ -609,7 +609,7 @@ const PALETTES = {
     concept: { ...LAND, FACADE: '#efebe4', SLAB_BANDS: '#d2cbbf', PLINTH: '#8c857b', ROOF: '#6b6f74', PARAPET: '#dcd6cc', PODIUM: '#a49d92',
       ASPHALT: '#55585c', PARKING_PAVERS: '#9a9a96', MARKING_WHITE: '#f2f2ee', CURB: '#d6d4cf', TERRACE: '#a9825c', PATH_PAVERS: '#d8d0bf',
       PLAYGROUND: '#c9714a', PLAY_SAND: '#e3cf98', PLAY_MOUND_GRASS: '#6f9f4f', LAWN: '#6f9f4f', GROUND: '#7fa45a', EXISTING_MEADOW: '#93a865',
-      TREE_CROWN_SITE: '#4f7f3e', TREE_CROWN: '#567f43', TREE_TRUNK: '#5e4a3a', DOOR: '#2b2d30', GLASS: '#4b5f6e' },
+      TREE_CROWN_SITE: '#4f7f3e', TREE_CROWN: '#567f43', TREE_TRUNK: '#5e4a3a', DOOR: '#2b2d30', GLASS: '#4b5f6e', HEDGE: '#3f7a3a' },
     edge: '#000000', edgeOp: 0, sel: 0x1d5c8f,
     legend: [['Naturalne kolory koncepcji i otoczenia, bez konturów – dobry podkład do wizualizacji AI', '#6f9f4f']],
   },
@@ -845,7 +845,6 @@ const PODIUMS = [{"n":"B","base":1.78,"pod":[[-57.43,18.52],[-61.14,25.04],[-48.
 const CONNECTORS = [
   { name: 'zjazd_poludniowy → Lipowa', w: 6, pts: [[104.68, -113.01], [108.16, -111.03], [111.94, -108.9]] },
   { name: 'wjazd_100-16 → Kanałowa', w: 6, pts: [[20.52, -107.54], [17.04, -109.52], [13.38, -110.07]] },
-  { name: 'dojazd_parking_A4 → Lipowa', w: 5, pts: [[4.95, 28.7], [8.43, 30.68], [27.09, 41.28]] },
 ];
 
 function inSite(x, y) {
@@ -1024,6 +1023,70 @@ function buildWindows() {
   const m = addConceptMesh(g, 'GLASS', '#3c4b57', { kind: 'glass', side: true, layer: 'l-cwin' });
   m.castShadow = false;
   return pos.length / 18;
+}
+
+/* --- uzupełnienia wg rysunku koncepcji ---
+   miejsca postojowe: 4 przy zachodniej granicy (P29–P30, wjazd z ulicy), 3 przy placyku między D a zawrotką;
+   żywopłoty przy A1–A4: wzdłuż granic działek budynków (od strony płd. w kształcie litery L, od płn. prosty) */
+function groundSmart(x, y) {
+  const cg = allMeshes.filter(o => o.userData.concept && !o.userData.extra && /ground|land/.test(o.userData.kind));
+  const xg = allMeshes.filter(o => !o.userData.concept && /^(TERRAIN|ROAD|PATH|PARKING|GREEN)/.test(o.userData.top || ''));
+  const h = hitAt(x, y, inSite(x, y) ? cg : xg) || hitAt(x, y, xg);
+  return h ? h.point.y : 1.5;
+}
+function flatQuad(c0, a, d, len, dep, h) {   // prostokąt w planie: narożnik c0, kierunki a (wzdłuż) i d (w głąb)
+  const p = (s, t) => P(c0[0] + a[0] * s + d[0] * t, c0[1] + a[1] * s + d[1] * t, h);
+  return [p(0, 0), p(len, 0), p(len, dep), p(0, dep)];
+}
+function buildStalls() {
+  const rows = [
+    { o: [-91.62, 40.45], a: [0.107, 0.994], n: 4 },     // przy granicy zachodniej (P29–P30), w głąb na wschód
+    { o: [-61.2, 43.2], a: [0, 1], n: 3 },               // przy placyku D / zawrotka, wjazd od wschodu
+  ];
+  const W = 2.6, D = 5.0, LW = 0.12;
+  const pav = [], lines = [];
+  for (const r of rows) {
+    const d = [r.a[1], -r.a[0]];                          // prostopadle, w prawo od kierunku rzędu (na wschód)
+    const cx = r.o[0] + r.a[0] * W * r.n / 2 + d[0] * D / 2, cy = r.o[1] + r.a[1] * W * r.n / 2 + d[1] * D / 2;
+    const h = groundSmart(cx, cy);
+    pav.push(flatQuad(r.o, r.a, d, W * r.n, D, h + 0.05));
+    for (let i = 0; i <= r.n; i++) {
+      const o = [r.o[0] + r.a[0] * (i * W - LW / 2), r.o[1] + r.a[1] * (i * W - LW / 2)];
+      lines.push(flatQuad(o, r.a, d, LW, D, h + 0.07));
+    }
+  }
+  addConceptMesh(quads(pav), 'PARKING_PAVERS', '#8e9093', { side: true, offset: true });
+  addConceptMesh(quads(lines), 'MARKING_WHITE', '#ffffff', { side: true, offset: true });
+  return rows.reduce((s, r) => s + r.n, 0);
+}
+function buildHedges() {
+  const U = [0.8691, 0.4946], R = [-0.4946, 0.8691];     // U: w poprzek rzędu (ku granicy wsch.), R: wzdłuż rzędu (płn.)
+  const dot = (p, v) => p[0] * v[0] + p[1] * v[1];
+  const boxes = [];
+  const seg = (u0, r0, u1, r1) => boxes.push([u0, r0, u1, r1]);
+  for (const n of ['A1', 'A2', 'A3', 'A4']) {
+    const ring = RINGS[n]; if (!ring) continue;
+    const rs = ring.map(p => dot(p, R)), rmin = Math.min(...rs), rmax = Math.max(...rs);
+    const OFF = 8.5, U0 = 9, U1 = 31;
+    seg(U0, rmin - OFF, U1, rmin - OFF);                 // płd. – część pozioma litery L
+    seg(U1, rmin - OFF, U1, rmin + 2);                   // płd. – ramię wzdłuż wschodniej strony
+    seg(U0, rmax + OFF, U1, rmax + OFF);                 // płn. – prosty
+  }
+  const pos = [], TH = 0.8, HH = 1.3;
+  const P2 = (u, r) => [U[0] * u + R[0] * r, U[1] * u + R[1] * r];
+  for (const [u0, r0, u1, r1] of boxes) {
+    const a = P2(u0, r0), b = P2(u1, r1), L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const ax = (b[0] - a[0]) / L, ay = (b[1] - a[1]) / L, nx = -ay * TH / 2, ny = ax * TH / 2;
+    const z = groundSmart((a[0] + b[0]) / 2, (a[1] + b[1]) / 2) - 0.2, zt = z + 0.2 + HH;
+    const c = [[a[0] + nx, a[1] + ny], [b[0] + nx, b[1] + ny], [b[0] - nx, b[1] - ny], [a[0] - nx, a[1] - ny]];
+    const V = (q, h) => P(q[0], q[1], h);
+    const faces = [[V(c[0], zt), V(c[1], zt), V(c[2], zt), V(c[3], zt)]];   // wierzch
+    for (let i = 0; i < 4; i++) { const q0 = c[i], q1 = c[(i + 1) % 4]; faces.push([V(q0, z), V(q1, z), V(q1, zt), V(q0, zt)]); }
+    for (const f of faces) for (const i of [0, 1, 2, 0, 2, 3]) pos.push(f[i].x, f[i].y, f[i].z);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+  addConceptMesh(g, 'HEDGE', '#3d7d3f', { kind: 'land', side: true, cast: true });
+  return boxes.length;
 }
 
 function buildConnectors() {
@@ -1296,6 +1359,8 @@ Promise.all([load('models/concept.glb', 'concept'), load('models/context.glb', '
   fixRoofC(concept);
   buildPodiums(concept);
   buildWindows();
+  buildStalls();
+  buildHedges();
   buildConnectors();
   buildTrees(trees);
   scene.updateMatrixWorld(true);
