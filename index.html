@@ -279,6 +279,23 @@ body.shot .app { grid-template-columns: 1fr; }
           <button type="button" data-l="pochmurno" aria-pressed="false">Pochmurno</button>
         </div>
       </div>
+      <div class="grp"><label class="lab" for="shot-style">Styl promptu</label>
+        <select id="shot-style">
+          <option value="nordic">Nordycki, nastrojowy</option>
+          <option value="competition" selected>Konkursowy, złota godzina</option>
+          <option value="premium">Premium, słoneczny</option>
+          <option value="drone">Masterplan z drona</option>
+          <option value="dusk">Zmierzch, niebieska godzina</option>
+          <option value="model">Makieta architektoniczna</option>
+        </select>
+        <label class="lab" for="shot-facade">Elewacja</label>
+        <select id="shot-facade">
+          <option value="tynk">Jasny tynk + drewno</option>
+          <option value="cegla">Cegła klinkierowa</option>
+          <option value="beton">Beton architektoniczny + szkło</option>
+          <option value="drewno">Okładzina drewniana</option>
+        </select>
+      </div>
       <div class="grp"><label class="lab" for="shot-res">Szer. px</label>
         <select id="shot-res"><option value="1920">1920</option><option value="2560" selected>2560</option><option value="3840">3840</option></select>
       </div>
@@ -1251,9 +1268,10 @@ function enterShot() {
   shot.prevLayers = { 'l-csite': LAYERS.find(l => l.id === 'l-csite').on, 'l-cgrid': LAYERS.find(l => l.id === 'l-cgrid').on, 'l-cgar': LAYERS.find(l => l.id === 'l-cgar').on };
   setLayer('l-csite', false); setLayer('l-cgrid', false); setLayer('l-cgar', false);   // czerwona granica i siatki mylą AI
   select(null);
-  palKey = 'naturalna'; applyPalette();
+  const st = STYLES[$('shot-style').value] || STYLES.competition;
+  palKey = st.pal; applyPalette();
   document.body.classList.add('shot'); shotbar.hidden = false;
-  setLight(shot.light || 'poludnie');
+  setLight(shot.light || st.light);
   requestAnimationFrame(() => { resize(); updateFrame(); });
 }
 function exitShot() {
@@ -1304,19 +1322,79 @@ $('shot-copy').addEventListener('click', async () => {
     toast('Ta przeglądarka nie pozwala skopiować obrazu – użyj „Zapisz PNG”.');
   }
 });
+/* Style promptu – opracowane na podstawie sygnatur czołowych studiów wizualizacji
+   (MIR: nastrój, stonowana paleta, krajobraz ważniejszy od ludzi; Luxigon / duńskie biura
+   konkursowe: złota godzina, życie, bujna zieleń; Hayes Davidson: realistycznie, optymistycznie;
+   Brick Visual: filmowo, stonowana paleta) i zaleceń OpenAI dla edycji obrazów
+   (scena → obiekt → szczegóły → ograniczenia, jawna lista „zachowaj”, „change only…”). */
+const STYLES = {
+  nordic: { light: 'pochmurno', pal: 'naturalna',
+    mood: 'Calm, atmospheric Nordic architectural photograph. Soft diffuse light from a thin high overcast sky with a faint warm glow near the horizon, light sea mist drifting over the lagoon. Muted, slightly desaturated palette of greys, sand, soft greens and weathered wood. The buildings sit quietly in the landscape; landscape and sky are as important as the architecture.',
+    people: 'Very few people, small and distant (a cyclist, someone walking a dog). They must not draw attention.',
+    out: 'Fine-art architectural photography, subtle film grain, restrained and elegant.' },
+  competition: { light: 'zlota', pal: 'naturalna',
+    mood: 'Vibrant architectural competition visualization at golden hour. Low warm sun raking across the facades, long soft shadows, sky glowing from peach near the horizon to pale blue above. Lush, varied planting: meadow grasses, flowering perennials, healthy young deciduous trees.',
+    people: 'Lively but natural everyday life: families, children on the playground, cyclists, neighbours on balconies, people strolling towards the water. Realistic scale, varied ages, nobody posing.',
+    out: 'High-end competition rendering quality, rich but natural colours, strong sense of place and community.' },
+  premium: { light: 'poludnie', pal: 'naturalna',
+    mood: 'Polished, optimistic premium real-estate photograph on a clear summer day. Crisp sunlight, deep blue sky with a few light cumulus clouds, high clarity and fine material detail, clean pavements, well-kept lawns and planting.',
+    people: 'A moderate number of residents placed naturally along paths: a parent with a pram, cyclists, a couple with shopping bags.',
+    out: 'Sales-brochure quality photograph, bright, sharp, colour-accurate, no stylisation.' },
+  drone: { light: 'poludnie', pal: 'naturalna',
+    mood: 'Aerial drone photograph of the whole new quarter in its context, soft late-morning sunlight, clear air with gentle aerial perspective towards the horizon. The new quarter is the clear subject: slightly brighter and crisper than the surrounding town, neatly landscaped.',
+    people: 'Only tiny figures. Cars in the parking areas, sailboats on the lagoon, red cattle grazing on the meadows east of the site.',
+    out: 'Professional aerial photography, natural colours, high detail across the whole frame.' },
+  dusk: { light: 'zlota', pal: 'naturalna',
+    mood: 'Cinematic blue-hour photograph shortly after sunset. Deep blue sky with a last band of orange on the horizon, warm interior light glowing in many windows, street lamps and path bollards switched on, subtle reflections on slightly wet pavements after rain, calm lagoon mirroring the sky.',
+    people: 'A few silhouettes walking home, a couple on a balcony. Quiet evening mood.',
+    out: 'Cinematic architectural photography, balanced exposure between sky and lit windows, no blown highlights.' },
+  model: { light: 'pochmurno', pal: 'makieta', model: true,
+    mood: 'Photograph of a physical architectural scale model (1:500) on a studio table. New buildings, podiums and landscaping made of light birch plywood and basswood with engraved window grid lines; existing buildings and terrain in matte white card; water as pale frosted acrylic; trees as small white and light-green foam spheres. Soft studio light from one side, gentle shadows, neutral light-grey background.',
+    people: 'Only a few tiny white scale figures.',
+    out: 'Macro product photography of an architectural model, shallow depth of field with a slight tilt-shift effect, sharp focus on the new quarter.' },
+};
+const FACADES = {
+  tynk: 'light warm-white mineral render with natural larch wood accents and slim dark-grey window frames',
+  cegla: 'red-brown Pomeranian clinker brick with subtle lighter brick details and dark window frames',
+  beton: 'light sandblasted architectural concrete panels with generous glazing and bronze anodised aluminium details',
+  drewno: 'vertical grey-weathered timber cladding above a light render ground floor, dark window frames',
+};
 function promptText() {
+  const st = STYLES[$('shot-style').value] || STYLES.competition;
+  const fac = FACADES[$('shot-facade').value] || FACADES.tynk;
   const eye = camera.position.y - controls.target.y < 25;
-  const L = LIGHTS[shot.light || 'poludnie'];
-  return [
-    'Przekształć załączony zrzut z modelu 3D w fotorealistyczną wizualizację architektoniczną.',
-    'Zachowaj dokładnie: kadr, perspektywę kamery, położenie i bryły budynków, liczbę kondygnacji, przebieg dróg, chodników, parkingów i zieleni. Nie dodawaj ani nie usuwaj budynków.',
-    'Miejsce: Kamień Pomorski (Pomorze Zachodnie, Polska), nowe osiedle mieszkaniowe przy Zalewie Kamieńskim, nadmorski klimat.',
-    'Koncepcja: budynki mieszkalne 4–5 kondygnacji z płaskimi dachami i attyką; budynki A1–A4 i B stoją na postumencie 1,5 m nad terenem (garaż podziemny, rampy zjazdowe). Jasne elewacje – materiały dobierz realistycznie i spójnie. Jezdnia asfaltowa, chodniki i parkingi z kostki betonowej, trawniki, młode drzewa liściaste, plac zabaw.',
-    'Otoczenie: istniejąca zabudowa miasta, łąki, drzewa, Zalew z mariną i żaglówkami – realistycznie, ale spokojniej niż nowe osiedle.',
-    `Ujęcie: ${eye ? 'z poziomu pieszego, wysokość oczu' : 'z lotu ptaka'}. Światło: ${L.label}, lato.`,
-    'Styl: fotografia architektoniczna, naturalne kolory, ostre detale, bez tekstu, etykiet i znaków wodnych.',
-  ].join('\n');
+  const L = [];
+  L.push(st.model
+    ? 'GOAL: Turn the attached screenshot of a 3D massing model into a photorealistic photograph of a physical architectural scale model of the same scene.'
+    : 'GOAL: Turn the attached screenshot of a 3D massing model into a photorealistic architectural visualization that looks like a real photograph.');
+  L.push('KEEP EXACTLY: camera position, angle and framing; horizon line; the position, footprint, height and number of storeys of every building; flat roofs; the 1.5 m podium under buildings A1–A4 and B with its garage ramps; the layout of roads, parking, paths, terraces, playground and green areas; the shoreline, marina and piers. Do not add, remove, move or resize any building. Keep vertical lines vertical.');
+  L.push('CHANGE ONLY: materials, textures, lighting, sky, vegetation detail, people, cars and small street furniture.');
+  L.push('SITE: Kamień Pomorski, a small historic town on the Baltic coast of north-west Poland, next to the Kamień Lagoon with a sailing marina. The new residential quarter (8 buildings, 4–5 storeys) sits at the edge of town, between existing low-rise housing and open meadows.');
+  if (!st.model) {
+    L.push(`ARCHITECTURE: contemporary residential buildings with simple calm volumes and flat roofs with a thin parapet. Facades: ${fac}. Regular window rhythm on every storey, balconies or loggias with simple balustrades. The podium is clad in light natural stone; asphalt road, concrete-paver paths and parking, wooden terraces, lawns, young deciduous trees, a children's playground with sand.`);
+    L.push('CONTEXT: existing buildings, meadows and trees rendered realistically but quieter and less detailed than the new quarter, so the new quarter is the clear focus.');
+  }
+  L.push('MOOD AND LIGHT: ' + st.mood);
+  L.push('PEOPLE: ' + st.people);
+  L.push('CAMERA: ' + (st.model ? 'keep the framing of the input, as if photographing the model from the same angle.'
+    : eye ? 'eye-level photograph from about 1.6 m, 24–28 mm architectural lens, two-point perspective, keep the framing of the input.'
+          : 'aerial drone photograph, keep the exact framing and viewing angle of the input.'));
+  L.push(`OUTPUT: ${st.out} Season: early summer. No text, labels, logos or watermarks.`);
+  L.push('CHECK BEFORE FINISHING: same number of buildings and storeys, same roof lines and the same road layout as the input image.');
+  return L.join('\n\n');
 }
+// wybór stylu promptu ustawia pasujące światło i paletę w modelu
+$('shot-style').addEventListener('change', () => {
+  const st = STYLES[$('shot-style').value];
+  palKey = st.pal; applyPalette(); setLight(st.light);
+  try { localStorage.setItem('kp3d-style', $('shot-style').value); } catch (e) {}
+});
+$('shot-facade').addEventListener('change', () => { try { localStorage.setItem('kp3d-facade', $('shot-facade').value); } catch (e) {} });
+try {
+  const s = localStorage.getItem('kp3d-style'), f = localStorage.getItem('kp3d-facade');
+  if (s && STYLES[s]) $('shot-style').value = s;
+  if (f && FACADES[f]) $('shot-facade').value = f;
+} catch (e) {}
 $('shot-prompt').addEventListener('click', async () => {
   const t = promptText();
   try { await navigator.clipboard.writeText(t); toast('Skopiowano prompt – wklej go w ChatGPT razem z obrazem.'); }
