@@ -373,7 +373,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { TessellateModifier } from 'three/addons/modifiers/TessellateModifier.js';
 import { computeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 // szybkie raycasty (BVH) – rozmieszczanie krów, łodzi i łącznic po terenie
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -1028,9 +1029,13 @@ function buildWindows() {
 /* --- uzupełnienia wg rysunku koncepcji ---
    miejsca postojowe: 4 przy zachodniej granicy (P29–P30, wjazd z ulicy), 3 przy placyku między D a zawrotką;
    żywopłoty przy A1–A4: wzdłuż granic działek budynków (od strony płd. w kształcie litery L, od płn. prosty) */
+let gsCache = null;
 function groundSmart(x, y) {
-  const cg = allMeshes.filter(o => o.userData.concept && !o.userData.extra && /ground|land/.test(o.userData.kind));
-  const xg = allMeshes.filter(o => !o.userData.concept && /^(TERRAIN|ROAD|PATH|PARKING|GREEN)/.test(o.userData.top || ''));
+  if (!gsCache) gsCache = {
+    cg: allMeshes.filter(o => o.userData.concept && !o.userData.extra && /ground|land/.test(o.userData.kind)),
+    xg: allMeshes.filter(o => !o.userData.concept && /^(TERRAIN|ROAD|PATH|PARKING|GREEN)/.test(o.userData.top || '')),
+  };
+  const { cg, xg } = gsCache;
   const h = hitAt(x, y, inSite(x, y) ? cg : xg) || hitAt(x, y, xg);
   return h ? h.point.y : 1.5;
 }
@@ -1087,6 +1092,48 @@ function buildHedges() {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
   addConceptMesh(g, 'HEDGE', '#3d7d3f', { kind: 'land', side: true, cast: true });
   return boxes.length;
+}
+
+/* --- nowy układ ulic (zaznaczony na rysunku na czarno, przeliczony z arkusza 1:1 – siatka 10 m) ---
+   zastępuje jezdnię z modelu koncepcji; jezdnia dopasowana do terenu, boki jak krawężniki */
+const ROADS_NEW = [{"o":[[-56.89,40.56],[-55.42,53.65],[-54.27,54.79],[-53.28,55.12],[-33.67,52.99],[-30.24,52.01],[-25.5,49.72],[-21.08,45.96],[-11.87,29.88],[-9.57,27.65],[-8.39,27.49],[-7.0,28.18],[14.07,40.4],[15.7,40.73],[16.36,40.07],[16.85,38.28],[15.21,36.8],[14.51,36.75],[-6.11,24.65],[-6.84,22.87],[-6.86,21.53],[-5.68,18.96],[-2.83,15.28],[-1.2,14.57],[1.12,14.91],[19.03,25.09],[21.36,27.08],[22.08,28.79],[23.06,28.63],[26.5,22.58],[26.82,20.94],[22.87,20.42],[5.17,10.58],[3.54,9.28],[2.8,7.83],[2.63,5.97],[3.32,4.57],[75.47,-121.52],[77.9,-123.26],[79.99,-122.57],[97.7,-112.4],[99.21,-111.16],[100.4,-108.06],[101.22,-108.39],[104.32,-114.11],[104.65,-114.76],[104.49,-116.07],[75.87,-132.42],[74.89,-132.59],[57.34,-101.03],[55.71,-99.42],[52.47,-99.27],[36.14,-108.39],[21.59,-110.68],[21.1,-110.19],[21.43,-109.37],[48.98,-93.93],[50.63,-91.32],[50.52,-89.62],[49.51,-87.6],[31.85,-56.52],[31.42,-56.17],[30.58,-56.39],[31.27,-56.15],[31.37,-55.73],[28.21,-50.56],[26.0,-49.39],[24.6,-49.2],[17.99,-52.96],[14.57,-53.12],[12.11,-52.3],[9.82,-50.51],[-14.27,-9.09],[-14.82,-8.59],[-15.85,-8.81],[-15.02,-8.59],[-14.89,-8.15],[-17.4,-3.66],[-17.81,-3.4],[-18.63,-3.74],[-19.28,-2.76],[-18.46,-2.01],[-20.16,1.05],[-20.76,1.5],[-21.08,1.0],[-21.57,1.0],[-22.55,2.31],[-22.55,2.63],[-21.69,2.64],[-21.28,1.96],[-20.92,2.34],[-42.41,39.34],[-43.76,40.51],[-45.05,41.05],[-46.52,41.05],[-48.72,40.07],[-51.34,39.58],[-55.91,40.07]],"h":[[[-10.46,-2.63],[-0.92,-19.82],[12.49,-43.04],[13.09,-43.48],[13.49,-44.7],[15.0,-46.04],[15.97,-46.25],[17.96,-46.08],[19.38,-45.37],[21.7,-43.4],[22.23,-42.31],[22.4,-40.76],[21.39,-38.38],[-1.54,1.08],[-2.69,2.23],[-4.44,3.11],[-7.02,2.93],[-9.75,0.72]],[[-37.44,45.14],[-37.6,43.93],[-37.06,42.32],[-18.07,9.31],[-16.42,7.61],[-14.34,6.57],[-13.27,6.57],[-11.22,7.43],[-9.01,9.83],[-8.49,11.76],[-8.84,13.91],[-24.24,40.78],[-28.71,44.76],[-32.4,46.27],[-35.73,46.77]]]}];
+function replaceRoads(concept) {
+  for (const node of [...concept.children]) {
+    if (!/^CONCEPT3D_ROAD/.test(node.name)) continue;
+    node.traverse(o => { const k = allMeshes.indexOf(o); if (k >= 0) allMeshes.splice(k, 1); });
+    for (const list of layerNodes.values()) { const k = list.indexOf(node); if (k >= 0) list.splice(k, 1); }
+    node.parent.remove(node);
+  }
+}
+function buildNewRoads() {
+  const LIFT = 0.2, SKIRT = 0.5;
+  // wysokość tylko z terenu projektowanego (bez krawężników, tarasów, parkingów) – gładka jezdnia
+  const cgr = allMeshes.filter(o => o.userData.concept && !o.userData.extra && (o.userData.kind === 'ground' || /CONCEPT3D_(DESIGN_GROUND|EXISTING)/.test(o.userData.top || '')));
+  const xgr = allMeshes.filter(o => !o.userData.concept && /^(TERRAIN|ROAD)/.test(o.userData.top || ''));
+  const groundSmart = (x, y) => { const h = hitAt(x, y, inSite(x, y) ? cgr : xgr) || hitAt(x, y, xgr) || hitAt(x, y, cgr); return h ? h.point.y : 1.5; };
+  const top = [], side = [];
+  for (const g of ROADS_NEW) {
+    const sh = shapeOf(g.o);
+    for (const h of g.h) sh.holes.push(new THREE.Path(h.map(([x, y]) => new THREE.Vector2(x, y))));
+    let geo = new THREE.ShapeGeometry(sh, 4); geo.rotateX(-Math.PI / 2);
+    geo = new TessellateModifier(2.5, 8).modify(geo);
+    const pa = geo.attributes.position;
+    for (let i = 0; i < pa.count; i++) pa.setY(i, groundSmart(pa.getX(i), -pa.getZ(i)) + LIFT);
+    geo.deleteAttribute('normal'); geo.deleteAttribute('uv');
+    geo = mergeVertices(geo, 0.01); geo.computeVertexNormals();     // gładkie cieniowanie
+    top.push(geo);
+    // boki jezdni (krawężnik) – co ok. 2 m próbka wysokości terenu
+    for (const ring of [g.o, ...g.h]) for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(L / 2));
+      for (let k = 0; k < n; k++) {
+        const p0 = [a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n], p1 = [a[0] + (b[0] - a[0]) * (k + 1) / n, a[1] + (b[1] - a[1]) * (k + 1) / n];
+        const h0 = groundSmart(...p0) + LIFT, h1 = groundSmart(...p1) + LIFT;
+        side.push([P(p0[0], p0[1], h0 - SKIRT), P(p1[0], p1[1], h1 - SKIRT), P(p1[0], p1[1], h1), P(p0[0], p0[1], h0)]);
+      }
+    }
+  }
+  addConceptMesh(top.length > 1 ? mergeGeometries(top) : top[0], 'ASPHALT', '#3d3d3f', { side: true, offset: true });
+  addConceptMesh(quads(side), 'CURB', '#d6d4cf', { side: true });
 }
 
 function buildConnectors() {
@@ -1357,11 +1404,13 @@ Promise.all([load('models/concept.glb', 'concept'), load('models/context.glb', '
   // BVH dla siatek terenu i nawierzchni (raz, przed próbkowaniem)
   for (const o of allMeshes) if (!o.isInstancedMesh && o.geometry.index && /ground|land|water|ctx/.test(o.userData.kind || '') && !o.geometry.boundsTree) { try { o.geometry.computeBoundsTree(); } catch (e) {} }
   fixRoofC(concept);
+  replaceRoads(concept);
   buildPodiums(concept);
   buildWindows();
   buildStalls();
   buildHedges();
   buildConnectors();
+  buildNewRoads();
   buildTrees(trees);
   scene.updateMatrixWorld(true);
   fixEye();
