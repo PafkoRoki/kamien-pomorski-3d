@@ -88,7 +88,13 @@ tfoot td { font-weight: 500; border-bottom: 0; color: var(--fg); }
 .layers { display: grid; gap: 2px; }
 .layers label { display: flex; align-items: center; gap: 9px; padding: 4px 0; cursor: pointer; font-size: 13.5px; }
 .layers input { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
-.layers .grp { font: 500 11px var(--f-mono); color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin-top: 8px; }
+.layers .grp { font: 600 11px var(--f-mono); color: var(--fg); letter-spacing: .06em; text-transform: uppercase; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.layers .grp:first-child { margin-top: 4px; border-top: 0; padding-top: 0; }
+#mode-panel { display: flex; width: 100%; }
+#mode-panel button { flex: 1; padding-inline: 4px; }
+.mode-note { margin: 8px 0 6px; font-size: 12px; color: var(--muted); }
+#mode-hud { background: var(--hud); }
+#mode-hud button { font-family: var(--f-body); font-weight: 600; min-height: 32px; }
 .layers .grp:first-child { margin-top: 0; }
 
 .seg { display: inline-flex; border: 1px solid var(--line); }
@@ -139,7 +145,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 10px 0 4px
 .loading .fill { height: 100%; width: 0; background: var(--accent); transition: width .2s ease-out; }
 /* HUD: grupy przycisków w rogach widoku */
 .hudtl, .hudtr { position: absolute; top: 14px; display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; z-index: 2; }
-.hudtl { left: 14px; max-width: calc(100% - 300px); }
+.hudtl { left: 14px; max-width: calc(100% - 250px); }
 .hudtr { right: max(14px, env(safe-area-inset-right, 0px)); justify-content: flex-end; }
 .hudtl > .hud, .hudtr > .hud { position: static; }
 .hint { padding: 7px 10px; font-size: 12px; color: var(--muted); }
@@ -237,6 +243,12 @@ body.shot .app { grid-template-columns: 1fr; }
 
     <details class="sec" id="sec-war" open>
       <summary><h2 id="h-war">Warstwy</h2></summary>
+      <div class="seg mode-seg" id="mode-panel" role="group" aria-label="Co pokazać">
+        <button type="button" data-m="all" aria-pressed="true">Całość</button>
+        <button type="button" data-m="c" aria-pressed="false">Tylko koncepcja</button>
+        <button type="button" data-m="x" aria-pressed="false">Tylko otoczenie</button>
+      </div>
+      <p class="mode-note">Skróty: W całość · K koncepcja · O otoczenie. „Tylko otoczenie” pokazuje teren działki w stanie istniejącym.</p>
       <div class="layers" id="layers"></div>
     </details>
 
@@ -263,6 +275,11 @@ body.shot .app { grid-template-columns: 1fr; }
   <main class="view" id="view">
     <div class="hudtl">
       <button type="button" class="hud hbtn" id="panel-toggle" aria-controls="panel" aria-expanded="true">Ukryj panel</button>
+      <div class="hud seg mode-seg" id="mode-hud" role="group" aria-label="Co pokazać">
+        <button type="button" data-m="all" aria-pressed="true" title="Całość (W)">Całość</button>
+        <button type="button" data-m="c" aria-pressed="false" title="Tylko koncepcja (K)">Koncepcja</button>
+        <button type="button" data-m="x" aria-pressed="false" title="Tylko otoczenie (O)">Otoczenie</button>
+      </div>
       <div class="hud hint" id="hint">Obrót: lewy przycisk · przesuw: prawy · zoom: kółko</div>
     </div>
     <div class="hud status" id="status" role="status" hidden></div>
@@ -287,8 +304,8 @@ body.shot .app { grid-template-columns: 1fr; }
     </div>
     <div id="labels"></div>
     <div class="hudtr">
-      <button type="button" class="hud hbtn" id="share">Kopiuj link do widoku</button>
-      <button type="button" class="hud hbtn shot-open" id="shot-open">Tryb zrzutu do wizualizacji</button>
+      <button type="button" class="hud hbtn" id="share" title="Kopiuj link do tego widoku (kamera, paleta, godzina, warstwy)">Link do widoku</button>
+      <button type="button" class="hud hbtn shot-open" id="shot-open" title="Tryb zrzutu do wizualizacji AI (Z)">Tryb zrzutu</button>
     </div>
     <div class="frame" id="frame" hidden></div>
     <div class="hud shotbar" id="shotbar" hidden>
@@ -515,14 +532,40 @@ const LAYERS = [
   { id: 'l-xegb', name: 'Działki ewidencyjne, granica MPZP', re: /^(EGIB|MPZP)/, on: false },
 ];
 const layerNodes = new Map(LAYERS.filter(l => l.id).map(l => [l.id, []]));
+// grupy: c = koncepcja, x = kontekst; warstwa widoczna = włączona sama i jej grupa
+const GROUPS = { c: { on: true }, x: { on: true } };
+const grpOf = l => l.id[2];
+const layerVisible = l => l.on && GROUPS[grpOf(l)].on;
+function refreshLayer(l) { const v = layerVisible(l); for (const o of layerNodes.get(l.id)) o.visible = v; }
+const clipOnU = { value: 1 };   // wycięcie otoczenia w granicy działki – tylko gdy widać koncepcję
+let viewMode = 'all';
+function setMode(m) {
+  viewMode = m;
+  GROUPS.c.on = m !== 'x'; GROUPS.x.on = m !== 'c';
+  for (const g of ['c', 'x']) { const cb = document.getElementById('grp-' + g); if (cb) cb.checked = GROUPS[g].on; }
+  document.querySelectorAll('.mode-seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === m)));
+  for (const l of LAYERS) if (l.id) refreshLayer(l);
+  clipOnU.value = GROUPS.c.on ? 1 : 0;
+  updateLabels();
+}
 const layersEl = document.getElementById('layers');
 for (const l of LAYERS) {
-  if (l.g) { const d = document.createElement('div'); d.className = 'grp'; d.textContent = l.g; layersEl.append(d); continue; }
+  if (l.g) {
+    const g = l.g === 'Koncepcja' ? 'c' : 'x';
+    const lab = document.createElement('label'); lab.className = 'grp';
+    lab.innerHTML = `<input type="checkbox" id="grp-${g}" checked> ${l.g}`;
+    lab.querySelector('input').addEventListener('change', e => {
+      GROUPS[g].on = e.target.checked;
+      setMode(GROUPS.c.on && GROUPS.x.on ? 'all' : GROUPS.c.on ? 'c' : GROUPS.x.on ? 'x' : 'none');
+    });
+    layersEl.append(lab); continue;
+  }
   const lab = document.createElement('label');
   lab.innerHTML = `<input type="checkbox" id="${l.id}" ${l.on ? 'checked' : ''}> ${l.name}`;
-  lab.querySelector('input').addEventListener('change', e => { l.on = e.target.checked; for (const o of layerNodes.get(l.id)) o.visible = l.on; if (l.id === 'l-cbld') updateLabels(); });
+  lab.querySelector('input').addEventListener('change', e => { l.on = e.target.checked; refreshLayer(l); if (l.id === 'l-cbld') updateLabels(); });
   layersEl.append(lab);
 }
+document.querySelectorAll('.mode-seg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.m)));
 
 /* ---------- Materiały ---------- */
 const origMat = new Map();
@@ -682,10 +725,10 @@ function clipSite(m) {
   if (siteClipped.has(m)) return;
   siteClipped.add(m);
   m.onBeforeCompile = sh => {
-    sh.uniforms.uRing = ringU;
+    sh.uniforms.uRing = ringU; sh.uniforms.uClipOn = clipOnU;
     sh.vertexShader = 'varying vec3 vWPos;\n' + sh.vertexShader.replace('#include <project_vertex>',
       '#include <project_vertex>\n  vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-    sh.fragmentShader = `varying vec3 vWPos;\nuniform vec2 uRing[${N_RING}];\n` + sh.fragmentShader.replace('#include <clipping_planes_fragment>',
+    sh.fragmentShader = `varying vec3 vWPos;\nuniform vec2 uRing[${N_RING}];\nuniform float uClipOn;\n` + sh.fragmentShader.replace('#include <clipping_planes_fragment>',
       `#include <clipping_planes_fragment>
   {
     vec2 p = vec2(vWPos.x, -vWPos.z);
@@ -695,7 +738,7 @@ function clipSite(m) {
       vec2 a = uRing[i], b = uRing[j];
       if (((a.y > p.y) != (b.y > p.y)) && (p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x)) inside = !inside;
     }
-    if (inside) discard;
+    if (inside && uClipOn > 0.5) discard;
   }`);
   };
   m.customProgramCacheKey = () => 'siteclip';
@@ -772,7 +815,7 @@ for (const b of BUILDINGS) {
 const vtmp = new THREE.Vector3();
 let modelReady = false;
 function updateLabels() {
-  const on = LAYERS.find(l => l.id === 'l-cbld').on && modelReady;
+  const on = layerVisible(LAYERS.find(l => l.id === 'l-cbld')) && modelReady;
   const w = view.clientWidth, h = view.clientHeight;
   for (const b of BUILDINGS) {
     const el = labels.get(b.n);
@@ -860,7 +903,7 @@ function inSite(x, y) {
   }
   return ins;
 }
-function addToLayer(id, obj) { layerNodes.get(id).push(obj); obj.visible = LAYERS.find(l => l.id === id).on; }
+function addToLayer(id, obj) { layerNodes.get(id).push(obj); obj.visible = layerVisible(LAYERS.find(l => l.id === id)); }
 const _ray = new THREE.Raycaster(), _down = new THREE.Vector3(0, -1, 0), _o = new THREE.Vector3();
 function hitAt(x, y, targets) { _ray.set(_o.set(x, 400, -y), _down); return _ray.intersectObjects(targets, false)[0]; }
 function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -881,6 +924,8 @@ function addConceptMesh(geo, key, fallback, o = {}) {
   m.castShadow = !!o.cast; m.receiveShadow = true;
   Object.assign(m.userData, { kind: o.kind || 'land', concept: true, extra: true });
   origMat.set(m, m.material); allMeshes.push(m); scene.add(m);
+  // dodatki należą do warstw koncepcji (przełącznik Całość / Koncepcja / Otoczenie)
+  addToLayer(o.layer || (m.userData.kind === 'new' ? 'l-cbld' : 'l-cland'), m);
   return m;
 }
 const shapeOf = ring => { const s = new THREE.Shape(); ring.forEach(([x, y], i) => i ? s.lineTo(x, y) : s.moveTo(x, y)); return s; };
@@ -939,14 +984,14 @@ function buildPodiums(concept) {
     const at = (p, k, du = 0) => [p[0] + n[0] * k + u[0] * du, p[1] + n[1] * k + u[1] * du];
     const H0 = at(hi[0], -0.3), H1 = hi[1], L0 = at(lo[0], -0.3), L1 = lo[1];   // od ściany (0) do 3,9 m
     const top = base + 0.02, bot = base + GAR_FLOOR, rail = base + 1.0;
-    addConceptMesh(quads([[V(H0, top), V(H1, top), V(L1, bot), V(L0, bot)]]), 'ASPHALT', '#3d3d3f', { side: true });
+    addConceptMesh(quads([[V(H0, top), V(H1, top), V(L1, bot), V(L0, bot)]]), 'ASPHALT', '#3d3d3f', { side: true, layer: 'l-cbld' });
     addConceptMesh(quads([
       [V(H1, top - 0.6), V(L1, bot), V(L1, rail), V(H1, rail)],          // ściana oporowa z balustradą
       [V(L0, bot), V(L1, bot), V(L1, rail), V(L0, rail)],                // ściana czołowa
-    ]), 'PODIUM', '#8f8a83', { side: true, cast: true });
+    ]), 'PODIUM', '#8f8a83', { side: true, cast: true, layer: 'l-cbld' });
     // brama garażu w ścianie postumentu na dole rampy
     const D0 = at(lo[0], -0.27), D1 = at(lo[0], -0.27, -5.0);
-    addConceptMesh(quads([[V(D0, bot), V(D1, bot), V(D1, bot + 2.6), V(D0, bot + 2.6)]]), 'DOOR', '#1e2124', { side: true });
+    addConceptMesh(quads([[V(D0, bot), V(D1, bot), V(D1, bot + 2.6), V(D0, bot + 2.6)]]), 'DOOR', '#1e2124', { side: true, layer: 'l-cbld' });
     // wycięcie w terenie koncepcji (czworobok CCW, z zapasem)
     let q = [at(hi[0], -0.32, -0.2), at(hi[1], 0.3, -0.2), at(lo[1], 0.3, 0.2), at(lo[0], -0.32, 0.2)];
     const area = q.reduce((s, p, i) => { const r = q[(i + 1) % 4]; return s + p[0] * r[1] - r[0] * p[1]; }, 0);
@@ -1390,7 +1435,7 @@ function toast(msg) { toastEl.textContent = msg; toastEl.hidden = false; clearTi
 function setLayer(id, on) {
   const l = LAYERS.find(x => x.id === id); if (!l) return;
   l.on = on; const cb = $(id); if (cb) cb.checked = on;
-  for (const o of layerNodes.get(id)) o.visible = on;
+  refreshLayer(l);
 }
 // prostokąt kadru w pikselach widoku (zostawia miejsce na pasek narzędzi)
 function frameRect() {
@@ -1462,13 +1507,15 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (shot.on) exitShot(); else if (selected) select(null); return; }
   if (shot.on) return;
   const cam = { 1: 'c-aerial', 2: 'c-plan', 3: 'c-north', 4: 'c-eye' }[e.key];
+  const mode = { w: 'all', k: 'c', o: 'x' }[e.key.toLowerCase()];
   if (cam) { $(cam).click(); e.preventDefault(); }
+  else if (mode) { setMode(mode); e.preventDefault(); }
   else if (e.key === 'z' || e.key === 'Z') { enterShot(); e.preventDefault(); }
 });
 
 /* ---------- Panel: zwijanie, sekcje, podpowiedź ---------- */
 const coarse = matchMedia('(pointer: coarse)').matches;
-$('hint').textContent = coarse ? '1 palec: obrót · 2 palce: zoom i przesuw' : 'Obrót: lewy przycisk · przesuw: prawy · zoom: kółko · skróty: 1–4 widoki, Z zrzut';
+$('hint').textContent = coarse ? '1 palec: obrót · 2 palce: zoom i przesuw' : 'Obrót: lewy przycisk · przesuw: prawy · zoom: kółko · skróty: 1–4 widoki, W/K/O warstwy, Z zrzut';
 function setPanel(open) {
   document.body.classList.toggle('nopanel', !open);
   $('panel-toggle').setAttribute('aria-expanded', String(open));
@@ -1486,7 +1533,7 @@ document.querySelectorAll('details.sec').forEach(d => {
 const r1 = v => Math.round(v * 10) / 10;
 function viewHash() {
   const c = camera.position, t = controls.target;
-  return '#c=' + [c.x, c.y, c.z, t.x, t.y, t.z].map(r1).join(',') + '&p=' + palKey + '&d=' + day.join('-') + '&t=' + timeEl.value;
+  return '#c=' + [c.x, c.y, c.z, t.x, t.y, t.z].map(r1).join(',') + '&p=' + palKey + '&d=' + day.join('-') + '&t=' + timeEl.value + '&m=' + viewMode;
 }
 function applyHash() {
   const h = new URLSearchParams(location.hash.slice(1));
@@ -1498,6 +1545,7 @@ function applyHash() {
     day = d; document.querySelectorAll('.seg button[data-d]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.d === d.join('-'))));
   }
   if (t >= 5 && t <= 21) timeEl.value = t;
+  if (['all', 'c', 'x'].includes(h.get('m'))) setMode(h.get('m'));
   updateSun();
 }
 $('share').addEventListener('click', async () => {
